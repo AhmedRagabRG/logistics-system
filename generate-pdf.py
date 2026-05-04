@@ -147,7 +147,6 @@ for item in toc_items:
 # Chapter 1: System Overview
 pdf.add_page()
 pdf.chapter_title('1. System Overview')
-pdf.body_text('The Logistics Dashboard is an automated quoting system that receives shipment requests from customers via WhatsApp, Telegram, or Email, automatically calculates prices or requests quotes from vendors, and manages the entire process from request to final price delivery.')
 
 pdf.section_title('How It Works (The Big Picture)')
 steps = [
@@ -164,15 +163,6 @@ steps = [
 for step in steps:
     pdf.bullet_point(step)
 pdf.ln(3)
-
-pdf.section_title('What This Means for You')
-pdf.bullet_point('Customers get instant responses when routes are covered')
-pdf.bullet_point('Vendors compete for uncovered routes via automatic RFQ')
-pdf.bullet_point('You control everything through approval or rejection')
-pdf.bullet_point('No manual data entry for incoming requests')
-pdf.ln(5)
-
-pdf.note_box('The system handles the heavy lifting. Your job is to review, approve, and manage exceptions.')
 
 # Chapter 2: Home Dashboard
 pdf.add_page()
@@ -470,14 +460,6 @@ pdf.cell(0, 5.5, '    -- Keeps low-confidence results pending for review', new_x
 pdf.cell(0, 5.5, '    -- Balanced approach between speed and control', new_x='LMARGIN', new_y='NEXT')
 pdf.ln(4)
 
-pdf.section_title('Waiting Period')
-pdf.body_text('How long the system waits for vendor responses before closing an RFQ:')
-pdf.bullet_point('1 minute: For testing only')
-pdf.bullet_point('30 minutes: Good for urgent requests')
-pdf.bullet_point('2 hours: Standard business practice')
-pdf.bullet_point('24 hours: For vendors in different time zones')
-pdf.ln(3)
-
 pdf.section_title('Global Markup (%)')
 pdf.body_text('The default profit margin applied to all vendor prices. You can override this per vendor using the custom margin feature.')
 
@@ -641,9 +623,6 @@ pdf.set_font('ArialUnicode', 'B', 18)
 pdf.set_text_color(28, 25, 23)
 pdf.ln(80)
 pdf.cell(0, 15, 'Thank You', align='C', new_x='LMARGIN', new_y='NEXT')
-pdf.set_font('ArialUnicode', '', 11)
-pdf.set_text_color(100, 100, 100)
-pdf.cell(0, 10, 'For questions or support, contact your system administrator.', align='C', new_x='LMARGIN', new_y='NEXT')
 pdf.ln(20)
 pdf.set_draw_color(194, 65, 12)
 pdf.line(70, pdf.get_y(), 140, pdf.get_y())
