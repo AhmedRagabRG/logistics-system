@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import QuoteReviewForm from '@/components/quotes/quote-review-form';
 import RfqDetailCard from '@/components/quotes/rfq-detail-card';
+import CreateRfqForm from '@/components/quotes/create-rfq-form';
 import StatusBadge from '@/components/ui/status-badge';
 import AutoRefresh from '@/components/ui/auto-refresh';
 import RefreshButton from '@/components/ui/refresh-button';
@@ -79,6 +80,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
     approved: 'border-l-[var(--success)]',
     rejected: 'border-l-[var(--danger)]',
     ready_to_send: 'border-l-[var(--info)]',
+    sent: 'border-l-[var(--success)]',
   };
   const detailBorder = statusBorderColors[quote.status] ?? 'border-l-[var(--muted)]';
 
@@ -215,6 +217,10 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
 
       {quote.rfq_id && (
         <RfqDetailCard rfqId={quote.rfq_id} rfqReference={quote.rfq_reference} locale={locale} quoteStatus={quote.status} />
+      )}
+
+      {!quote.rfq_id && quote.status !== 'approved' && quote.status !== 'rejected' && (
+        <CreateRfqForm quoteId={quote.id} locale={locale} />
       )}
 
       {isPending && (

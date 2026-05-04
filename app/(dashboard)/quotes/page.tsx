@@ -141,6 +141,7 @@ export default function QuotesPage() {
               <option value="approved">{_t('status_approved')}</option>
               <option value="rejected">{_t('status_rejected')}</option>
               <option value="ready_to_send">{_t('status_ready')}</option>
+              <option value="sent">{_t('status_sent')}</option>
             </select>
             <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)}>
               <option value="">{_t('filter_all')} — {_t('filter_channel')}</option>

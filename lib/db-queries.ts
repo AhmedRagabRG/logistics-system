@@ -11,6 +11,7 @@ export interface AnalyticsData {
     approved_quotes: number;
     rejected_quotes: number;
     ready_quotes: number;
+    sent_quotes: number;
     avg_response_time_minutes: number | null;
     approval_rate_percent: number;
     total_revenue: number;
@@ -69,6 +70,7 @@ export async function getAnalytics(
         approved_quotes: number;
         rejected_quotes: number;
         ready_quotes: number;
+        sent_quotes: number;
         avg_response_time_minutes: number | null;
         approval_rate_percent: number;
         total_revenue: number;
@@ -86,9 +88,10 @@ export async function getAnalytics(
       (SELECT COUNT(*) FROM quotes ${dateCondition} AND status = 'approved') as approved_quotes,
       (SELECT COUNT(*) FROM quotes ${dateCondition} AND status = 'rejected') as rejected_quotes,
       (SELECT COUNT(*) FROM quotes ${dateCondition} AND status = 'ready_to_send') as ready_quotes,
+      (SELECT COUNT(*) FROM quotes ${dateCondition} AND status = 'sent') as sent_quotes,
       (SELECT AVG(TIMESTAMPDIFF(MINUTE, q.created_at, q.approved_at)) FROM quotes q ${dateCondition} AND q.status = 'approved' AND q.approved_at IS NOT NULL) as avg_response_time_minutes,
-      (SELECT COALESCE(ROUND((COUNT(CASE WHEN status = 'approved' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0)), 2), 0) FROM quotes ${dateCondition}) as approval_rate_percent,
-      (SELECT COALESCE(SUM(final_price), 0) FROM quotes ${dateCondition} AND status = 'approved') as total_revenue,
+      (SELECT COALESCE(ROUND((COUNT(CASE WHEN status IN ('approved', 'sent') THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0)), 2), 0) FROM quotes ${dateCondition}) as approval_rate_percent,
+      (SELECT COALESCE(SUM(final_price), 0) FROM quotes ${dateCondition} AND status IN ('approved', 'sent')) as total_revenue,
       (SELECT COUNT(*) FROM vendors WHERE is_active = 1) as active_vendors,
       (SELECT COUNT(*) FROM unmatched_vendor_replies WHERE status = 'unmatched') as unmatched_replies,
       (SELECT COUNT(*) FROM rfq_records WHERE status IN ('open', 'responded')) as open_rfqs,
@@ -225,6 +228,7 @@ export async function getAnalytics(
       approved_quotes: summary.approved_quotes,
       rejected_quotes: summary.rejected_quotes,
       ready_quotes: summary.ready_quotes,
+      sent_quotes: summary.sent_quotes,
       avg_response_time_minutes: summary.avg_response_time_minutes,
       approval_rate_percent: summary.approval_rate_percent,
       total_revenue: summary.total_revenue,

@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS quotes (
     markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
     final_price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
-    status ENUM('pending', 'approved', 'rejected', 'ready_to_send') NOT NULL DEFAULT 'pending',
+    status ENUM('pending', 'approved', 'rejected', 'ready_to_send', 'sent') NOT NULL DEFAULT 'pending',
     handling_mode ENUM('auto', 'manual', 'external') NOT NULL DEFAULT 'manual',
     rfq_id INT,
     toggle_state_at_creation VARCHAR(32) NOT NULL DEFAULT 'manual_approval',

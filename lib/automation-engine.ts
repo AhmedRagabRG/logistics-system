@@ -25,7 +25,7 @@ export interface ProcessRequestInput {
 
 export interface ProcessRequestResult {
   quote_id: number;
-  status: 'pending' | 'ready_to_send' | 'data_request';
+  status: 'pending' | 'ready_to_send' | 'sent' | 'data_request';
   handling_mode: 'auto' | 'manual' | 'external';
   origin_region: string;
   destination_region: string;
@@ -493,6 +493,8 @@ async function createQuoteForRoute({
   // Do NOT send "we're reviewing" messages for pending/RFQ/oversize/manual-approval states.
   // Customer will hear back when: admin approves/rejects, or RFQ cron auto-closes with vendor price.
   let customerResponseMessage = '';
+  let finalQuoteStatus: 'pending' | 'ready_to_send' | 'sent' = rfqId ? 'pending' : quoteStatus;
+
   if (quoteStatus === 'ready_to_send' && !rfqId) {
     const customerResponse = await generateCustomerResponse({
       quote_id: quoteId,
@@ -508,11 +510,41 @@ async function createQuoteForRoute({
     customerResponseMessage = customerResponse.message;
 
     if (input.customer_contact) {
-      const sendResult = await sendMessage({
+      const sendInput: Parameters<typeof sendMessage>[0] = {
         channel,
         contactId: input.customer_contact,
         message: customerResponse.message,
-      });
+      };
+
+      // WhatsApp: fallback to approved template if outside 24h window
+      if (channel === 'whatsapp') {
+        sendInput.whatsappTemplate = {
+          name: 'logistics_quote_approved',
+          languageCode: 'en',
+          bodyParameters: [
+            String(originRegionValue),
+            String(destinationRegionValue),
+            `${pricingResult.finalPrice.toLocaleString('en-US')} ${pricingResult.currency}`,
+          ],
+        };
+      }
+
+      const sendResult = await sendMessage(sendInput);
+
+      if (sendResult.success) {
+        finalQuoteStatus = 'sent';
+        await pool.execute(
+          `UPDATE quotes SET status = 'sent' WHERE id = ?`,
+          [quoteId]
+        );
+      } else {
+        // Send failed — keep ready_to_send and record error so admin can see
+        await pool.execute(
+          `UPDATE quotes SET review_reason = CONCAT(IFNULL(review_reason, ''), ' [SEND FAILED: ', ?, ']') WHERE id = ?`,
+          [sendResult.error ?? 'Unknown error', quoteId]
+        );
+      }
+
       await logPricingEvent({
         event_type: sendResult.success ? 'customer_response_sent' : 'customer_response_failed',
         quote_id: quoteId,
@@ -529,7 +561,7 @@ async function createQuoteForRoute({
 
   return {
     quote_id: quoteId,
-    status: rfqId ? 'pending' : quoteStatus,
+    status: finalQuoteStatus,
     handling_mode: handlingMode,
     origin_region: String(originRegionValue),
     destination_region: String(destinationRegionValue),
@@ -670,11 +702,38 @@ export async function processExpiredRFQs(): Promise<{
           status: 'ready_to_send',
         });
 
-        const sendResult = await sendMessage({
+        const sendInput: Parameters<typeof sendMessage>[0] = {
           channel: customer.channel as 'whatsapp' | 'telegram' | 'email',
           contactId: customer.customer_contact,
           message: customerResponse.message,
-        });
+        };
+
+        // WhatsApp: fallback to approved template if outside 24h window
+        if (customer.channel === 'whatsapp') {
+          sendInput.whatsappTemplate = {
+            name: 'logistics_quote_approved',
+            languageCode: 'en',
+            bodyParameters: [
+              customer.origin_region,
+              customer.destination_region,
+              `${finalPrice.toLocaleString('en-US')} ${lowestCurrency}`,
+            ],
+          };
+        }
+
+        const sendResult = await sendMessage(sendInput);
+
+        if (sendResult.success) {
+          await pool.execute(
+            `UPDATE quotes SET status = 'sent' WHERE id = ?`,
+            [rfq.quote_id]
+          );
+        } else {
+          await pool.execute(
+            `UPDATE quotes SET review_reason = CONCAT(IFNULL(review_reason, ''), ' [SEND FAILED: ', ?, ']') WHERE id = ?`,
+            [sendResult.error ?? 'Unknown error', rfq.quote_id]
+          );
+        }
 
         await logPricingEvent({
           event_type: sendResult.success ? 'customer_rfq_ready_sent' : 'customer_rfq_ready_failed',

@@ -12,6 +12,7 @@ const statusStyles: Record<string, { bg: string; text: string; border: string; d
   approved:     { bg: 'bg-[var(--success)]/10',  text: 'text-[var(--success)]',  border: 'border-[var(--success)]/30',  dot: 'bg-[var(--success)]' },
   rejected:     { bg: 'bg-[var(--danger)]/10',   text: 'text-[var(--danger)]',   border: 'border-[var(--danger)]/30',   dot: 'bg-[var(--danger)]' },
   ready_to_send:{ bg: 'bg-[var(--info)]/10',     text: 'text-[var(--info)]',     border: 'border-[var(--info)]/30',     dot: 'bg-[var(--info)]' },
+  sent:         { bg: 'bg-[var(--success)]/10',  text: 'text-[var(--success)]',  border: 'border-[var(--success)]/30',  dot: 'bg-[var(--success)]' },
   open:         { bg: 'bg-[var(--info)]/10',     text: 'text-[var(--info)]',     border: 'border-[var(--info)]/30',     dot: 'bg-[var(--info)]' },
   responded:    { bg: 'bg-[var(--success)]/10',  text: 'text-[var(--success)]',  border: 'border-[var(--success)]/30',  dot: 'bg-[var(--success)]' },
   closed:       { bg: 'bg-[var(--muted)]/10',    text: 'text-[var(--muted)]',    border: 'border-[var(--muted)]/30',    dot: 'bg-[var(--muted)]' },

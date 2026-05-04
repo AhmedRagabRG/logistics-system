@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS quotes (
     markup_percent DECIMAL(5,2) NOT NULL,
     final_price DECIMAL(12,2) NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
-    status ENUM('pending', 'approved', 'rejected', 'ready_to_send') NOT NULL DEFAULT 'pending',
+    status ENUM('pending', 'approved', 'rejected', 'ready_to_send', 'sent') NOT NULL DEFAULT 'pending',
     toggle_state_at_creation VARCHAR(32) NOT NULL,
     is_oversize BOOLEAN NOT NULL DEFAULT FALSE,
     review_reason VARCHAR(255),

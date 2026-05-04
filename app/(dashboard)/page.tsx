@@ -22,6 +22,7 @@ export default async function DashboardHomePage() {
         { label: t('stat_pending_quotes', locale), value: analytics.summary.pending_quotes, warn: analytics.summary.pending_quotes > 0 },
         { label: t('stat_approved_quotes', locale), value: analytics.summary.approved_quotes },
         { label: t('stat_rejected_quotes', locale), value: analytics.summary.rejected_quotes },
+        { label: t('stat_sent_quotes', locale), value: analytics.summary.sent_quotes },
         { label: t('stat_avg_response', locale), value: analytics.summary.avg_response_time_minutes ? Math.round(analytics.summary.avg_response_time_minutes) : '-' },
         { label: t('stat_approval_rate', locale), value: `${analytics.summary.approval_rate_percent}%` },
       ]
@@ -69,7 +70,7 @@ export default async function DashboardHomePage() {
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4 lg:grid-cols-7">
+          <div className="grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4 lg:grid-cols-8">
             {stats.map((s) => (
               <div key={s.label} className="bg-[var(--surface)] px-3 py-3">
                 <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">

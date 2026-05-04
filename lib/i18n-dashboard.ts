@@ -30,6 +30,7 @@ export type TranslationKey =
   | 'stat_pending_quotes'
   | 'stat_approved_quotes'
   | 'stat_rejected_quotes'
+  | 'stat_sent_quotes'
   | 'stat_avg_response'
   | 'stat_approval_rate'
   | 'channel_distribution'
@@ -57,6 +58,7 @@ export type TranslationKey =
   | 'status_approved'
   | 'status_rejected'
   | 'status_ready'
+  | 'status_sent'
   | 'quote_detail_title'
   | 'customer'
   | 'origin_region'
@@ -308,6 +310,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     stat_pending_quotes: 'Bekleyen Teklif',
     stat_approved_quotes: 'Onaylanan Teklif',
     stat_rejected_quotes: 'Reddedilen Teklif',
+    stat_sent_quotes: 'Gönderilen Teklif',
     stat_avg_response: 'Ort. Yanıt Süresi (dk)',
     stat_approval_rate: 'Onay Oranı (%)',
     channel_distribution: 'Kanal Dağılımı',
@@ -334,6 +337,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     status_approved: 'Onaylandı',
     status_rejected: 'Reddedildi',
     status_ready: 'Gönderilmeye Hazır',
+    status_sent: 'Müşteriye Gönderildi',
     quote_detail_title: 'Teklif',
     customer: 'Müşteri',
     origin_region: 'Çıkış Bölgesi',
@@ -569,6 +573,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     stat_pending_quotes: 'Pending Quotes',
     stat_approved_quotes: 'Approved Quotes',
     stat_rejected_quotes: 'Rejected Quotes',
+    stat_sent_quotes: 'Sent Quotes',
     stat_avg_response: 'Avg. Response (min)',
     stat_approval_rate: 'Approval Rate (%)',
     channel_distribution: 'Channel Distribution',
@@ -595,6 +600,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     status_approved: 'Approved',
     status_rejected: 'Rejected',
     status_ready: 'Ready to Send',
+    status_sent: 'Sent to Customer',
     quote_detail_title: 'Quote',
     customer: 'Customer',
     origin_region: 'Origin Region',
