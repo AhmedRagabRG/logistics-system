@@ -214,7 +214,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {quote.rfq_id && (
-        <RfqDetailCard rfqId={quote.rfq_id} rfqReference={quote.rfq_reference} locale={locale} />
+        <RfqDetailCard rfqId={quote.rfq_id} rfqReference={quote.rfq_reference} locale={locale} quoteStatus={quote.status} />
       )}
 
       {isPending && (

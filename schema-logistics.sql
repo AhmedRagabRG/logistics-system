@@ -83,13 +83,15 @@ CREATE TABLE IF NOT EXISTS rfq_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     quote_id INT NOT NULL,
     target_country VARCHAR(2) NOT NULL,
-    selected_vendors JSON NOT NULL,
+    selected_vendors JSON,
     vendor_responses JSON,
     generated_quote_price DECIMAL(12,2),
+    selected_vendor_id INT NULL,
     status ENUM('open', 'responded', 'closed') NOT NULL DEFAULT 'open',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE,
+    FOREIGN KEY (selected_vendor_id) REFERENCES vendors(id) ON DELETE SET NULL,
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

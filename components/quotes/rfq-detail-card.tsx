@@ -1,11 +1,13 @@
 import { type DashboardLocale, t } from '@/lib/i18n-dashboard';
 import pool from '@/lib/db';
 import type { RowDataPacket } from 'mysql2/promise';
+import RfqVendorSelector from './rfq-vendor-selector';
 
 interface RfqDetailProps {
   rfqId: number;
   rfqReference: string | null;
   locale: DashboardLocale;
+  quoteStatus?: string;
 }
 
 function getWaitingPeriodSeconds(period: string): number {
@@ -29,7 +31,7 @@ function formatDuration(seconds: number, locale: DashboardLocale): string {
   return locale === 'tr' ? `${mins}dk` : `${mins}m`;
 }
 
-export default async function RfqDetailCard({ rfqId, rfqReference, locale }: RfqDetailProps) {
+export default async function RfqDetailCard({ rfqId, rfqReference, locale, quoteStatus }: RfqDetailProps) {
   // Get RFQ record
   const [rfqRows] = await pool.execute<
     Array<RowDataPacket & {
@@ -38,10 +40,11 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale }: Rfq
       target_country: string;
       status: string;
       generated_quote_price: number | null;
+      selected_vendor_id: number | null;
       created_at: Date;
     }>
   >(
-    'SELECT id, rfq_reference, target_country, status, generated_quote_price, created_at FROM rfq_records WHERE id = ? LIMIT 1',
+    'SELECT id, rfq_reference, target_country, status, generated_quote_price, selected_vendor_id, created_at FROM rfq_records WHERE id = ? LIMIT 1',
     [rfqId]
   );
 
@@ -90,17 +93,7 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale }: Rfq
   const totalCount = vendorRows.length;
   const isExpired = secondsRemaining <= 0;
   const isClosed = rfq.status === 'closed';
-
-  // Find the winning vendor (lowest price among responded vendors)
-  // IMPORTANT: MySQL returns DECIMAL as strings, so we must parse to number before comparing
-  const respondedVendors = vendorRows.filter((v) => v.status === 'responded' && v.response_price !== null);
-  const winningVendor = respondedVendors.length > 0
-    ? respondedVendors.reduce((min, v) => {
-        const minPrice = typeof min.response_price === 'string' ? parseFloat(min.response_price) : min.response_price!;
-        const vPrice = typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price!;
-        return vPrice < minPrice ? v : min;
-      })
-    : null;
+  const isPending = quoteStatus === 'pending';
 
   const statusColor = isClosed
     ? 'text-[var(--success)]'
@@ -162,49 +155,65 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale }: Rfq
           </div>
         )}
 
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-2">
-            {locale === 'tr' ? 'Tedarikçiler' : 'Vendors'}
-          </div>
-          <div className="space-y-px border border-[var(--border)] bg-[var(--border)]">
-            {vendorRows.map((v) => {
-              const isWinner = winningVendor && winningVendor.vendor_id === v.vendor_id;
-              return (
-                <div key={v.vendor_id} className={`flex items-center justify-between px-3 py-2 ${isWinner ? 'bg-[var(--success)]/5 border-l-2 border-l-[var(--success)]' : 'bg-[var(--surface)]'}`}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs font-bold text-[var(--foreground)]">{v.vendor_name}</div>
-                      {isWinner && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[var(--success)] text-white rounded">
-                          {locale === 'tr' ? 'Seçildi' : 'Selected'}
+        {/* Vendor list with selection for pending quotes */}
+        {isPending && respondedCount > 0 ? (
+          <RfqVendorSelector
+            rfqId={rfqId}
+            vendors={vendorRows.map((v) => ({
+              vendor_id: v.vendor_id,
+              vendor_name: v.vendor_name,
+              response_price: v.response_price,
+              response_currency: v.response_currency,
+              status: v.status,
+            }))}
+            selectedVendorId={rfq.selected_vendor_id}
+            locale={locale}
+          />
+        ) : (
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-2">
+              {locale === 'tr' ? 'Tedarikçiler' : 'Vendors'}
+            </div>
+            <div className="space-y-px border border-[var(--border)] bg-[var(--border)]">
+              {vendorRows.map((v) => {
+                const isSelected = rfq.selected_vendor_id === v.vendor_id;
+                return (
+                  <div key={v.vendor_id} className={`flex items-center justify-between px-3 py-2 ${isSelected ? 'bg-[var(--success)]/5 border-l-2 border-l-[var(--success)]' : 'bg-[var(--surface)]'}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs font-bold text-[var(--foreground)]">{v.vendor_name}</div>
+                        {isSelected && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[var(--success)] text-white rounded">
+                            {locale === 'tr' ? 'Seçildi' : 'Selected'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] font-mono text-[var(--muted)]">
+                        {v.contact_channel} · {v.contact_id}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-3">
+                      {v.status === 'responded' && v.response_price ? (
+                        <>
+                          <div className={`font-mono text-sm font-bold ${isSelected ? 'text-[var(--success)]' : 'text-[var(--foreground)]'}`}>
+                            {(typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2 })} {v.response_currency}
+                          </div>
+                          <div className="text-[10px] font-mono text-[var(--muted)]">
+                            {v.responded_at ? new Date(v.responded_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : ''}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                          {locale === 'tr' ? 'Bekliyor' : 'Pending'}
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] font-mono text-[var(--muted)]">
-                      {v.contact_channel} · {v.contact_id}
-                    </div>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-3">
-                    {v.status === 'responded' && v.response_price ? (
-                      <>
-                        <div className={`font-mono text-sm font-bold ${isWinner ? 'text-[var(--success)]' : 'text-[var(--foreground)]'}`}>
-                          {(typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2 })} {v.response_currency}
-                        </div>
-                        <div className="text-[10px] font-mono text-[var(--muted)]">
-                          {v.responded_at ? new Date(v.responded_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : ''}
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                        {locale === 'tr' ? 'Bekliyor' : 'Pending'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

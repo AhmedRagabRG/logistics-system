@@ -81,11 +81,31 @@ export async function POST(
     }
 
     // Use vendor's original price and currency (no exchange rate conversion)
-    const vendorPrice = assignment.response_price;
+    const vendorPrice = typeof assignment.response_price === 'string' ? parseFloat(assignment.response_price) : assignment.response_price;
     const vendorCurrency = assignment.response_currency;
 
-    // Apply admin margin
-    const margin = admin_margin_percent ?? 0;
+    // Determine margin: explicit admin margin > vendor-specific > global
+    let margin = admin_margin_percent;
+    let marginSource = 'admin';
+    if (margin === undefined) {
+      const [vendorMarginRows] = await pool.execute<
+        Array<RowDataPacket & { use_custom_margin: number; margin_rate: number }>
+      >(
+        'SELECT use_custom_margin, margin_rate FROM vendors WHERE id = ? LIMIT 1',
+        [selected_vendor_id]
+      );
+      const vm = vendorMarginRows?.[0];
+      if (vm && vm.use_custom_margin === 1) {
+        margin = vm.margin_rate;
+        marginSource = 'vendor';
+      } else {
+        const [settingsRows] = await pool.execute<
+          Array<RowDataPacket & { global_markup_percent: number }>
+        >('SELECT global_markup_percent FROM system_settings ORDER BY id DESC LIMIT 1');
+        margin = settingsRows?.[0]?.global_markup_percent ?? 0;
+        marginSource = 'global';
+      }
+    }
     const finalPrice = vendorPrice * (1 + margin / 100);
 
     // Update quote with generated price (keep vendor's original currency)
@@ -94,17 +114,17 @@ export async function POST(
       [vendorPrice, margin, finalPrice, vendorCurrency, rfq.quote_id]
     );
 
-    // Update RFQ
+    // Update RFQ with selected vendor
     await pool.execute<ResultSetHeader>(
-      `UPDATE rfq_records SET generated_quote_price = ?, status = 'closed' WHERE id = ?`,
-      [finalPrice, rfqId]
+      `UPDATE rfq_records SET generated_quote_price = ?, selected_vendor_id = ?, status = 'closed' WHERE id = ?`,
+      [finalPrice, selected_vendor_id, rfqId]
     );
 
     await logPricingEvent({
       event_type: 'rfq_quote_generated',
       quote_id: rfq.quote_id,
       admin_id: auth.admin.id,
-      details: { vendor_id: selected_vendor_id, vendor_price: vendorPrice, margin, final_price: finalPrice },
+      details: { vendor_id: selected_vendor_id, vendor_price: vendorPrice, margin, margin_source: marginSource, final_price: finalPrice },
     });
 
     return NextResponse.json({

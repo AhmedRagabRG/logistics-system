@@ -641,8 +641,8 @@ export async function processExpiredRFQs(): Promise<{
 
     // Update RFQ
     await pool.execute(
-      `UPDATE rfq_records SET generated_quote_price = ?, status = 'closed' WHERE id = ?`,
-      [finalPrice, rfq.id]
+      `UPDATE rfq_records SET generated_quote_price = ?, selected_vendor_id = ?, status = 'closed' WHERE id = ?`,
+      [finalPrice, selectedVendorId, rfq.id]
     );
 
     // Only notify customer in auto/low-confidence mode.
