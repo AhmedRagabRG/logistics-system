@@ -32,12 +32,9 @@ export async function POST(request: NextRequest) {
     const messageText = message.text;
     const chatId = message.chat?.id ? String(message.chat.id) : null;
 
-    // Track that customer messaged us — opens 24h free-form reply window
-    if (chatId) {
-      trackCustomerMessageWindow(chatId, 'telegram').catch((err) => {
-        console.error('Telegram track window error:', err);
-      });
-    }
+    // NOTE: Telegram has no 24h messaging window restriction.
+    // WhatsApp-only tracking is used for compliance with Meta's free-form policy.
+    // Telegram bots can always send messages freely.
 
     const result = await processIncomingRequest({
       raw_message: String(messageText),

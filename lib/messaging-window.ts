@@ -5,7 +5,8 @@ const MESSAGING_WINDOW_HOURS = 24;
 
 /**
  * Track that a customer sent us a message.
- * This opens a 24-hour window for free-form replies.
+ * This opens a 24-hour window for free-form replies (WHATSAPP ONLY).
+ * Telegram has no messaging window restriction.
  */
 export async function trackCustomerMessageWindow(
   contactId: string,
@@ -22,8 +23,8 @@ export async function trackCustomerMessageWindow(
 }
 
 /**
- * Check if we're still within the 24h free-form messaging window
- * for a given customer contact.
+ * Check if we're still within the 24h free-form messaging window (WHATSAPP ONLY).
+ * Telegram has no such restriction — bots can always send messages.
  */
 export async function isWithinMessagingWindow(
   contactId: string,
