@@ -228,13 +228,33 @@ export async function sendEmail(
   text: string,
   html?: string
 ): Promise<EmailSendResult> {
+  // Prefer n8n webhook if configured (n8n handles Outlook via its own connection)
+  const n8nWebhook = process.env.N8N_EMAIL_WEBHOOK_URL;
+  if (n8nWebhook) {
+    try {
+      const res = await fetch(n8nWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, text, html }),
+      });
+      if (!res.ok) {
+        const err = await res.text().catch(() => 'n8n webhook error');
+        return { success: false, error: `n8n: ${err}` };
+      }
+      return { success: true, messageId: `n8n-${Date.now()}` };
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : 'n8n webhook failed' };
+    }
+  }
+
+  // Fallback to SMTP
   const smtpHost = process.env.SMTP_HOST || 'smtp.office365.com';
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
 
   if (!smtpUser || !smtpPass) {
-    return { success: false, error: 'SMTP_USER or SMTP_PASS not configured' };
+    return { success: false, error: 'SMTP not configured and N8N_EMAIL_WEBHOOK_URL not set' };
   }
 
   try {
@@ -242,21 +262,12 @@ export async function sendEmail(
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      tls: {
-        rejectUnauthorized: true,
-        ciphers: 'SSLv3',
-      },
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
     const info = await transporter.sendMail({
       from: `"Logistics Dashboard" <${smtpUser}>`,
-      to,
-      subject,
-      text,
+      to, subject, text,
       html: html || text.replace(/\n/g, '<br/>'),
     });
 

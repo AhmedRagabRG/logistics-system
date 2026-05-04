@@ -6,20 +6,36 @@ import type { RowDataPacket } from 'mysql2/promise';
 /**
  * Email Webhook
  *
- * Handles both customer quote requests and vendor replies via email.
- * Configure your email service (e.g. SendGrid Inbound Parse, AWS SES, Postmark)
- * to POST parsed emails to this endpoint.
+ * Receives emails forwarded by n8n (or any HTTP client).
+ * n8n connects to Outlook via IMAP/Microsoft Graph, reads new emails,
+ * then POSTs the parsed data here.
  *
- * Expected body format:
+ * Expected body from n8n (HTTP Request node):
  * {
- *   from: "customer@example.com",
+ *   from: "sender@example.com",
  *   subject: "Quote request",
- *   text: "message text here",
- *   html: "<p>message html</p>"
+ *   text: "I need a quote from Turkey to Germany...",
+ *   body: "same as text"  // fallback
  * }
+ *
+ * The endpoint auto-detects if the sender is a known vendor
+ * (by matching `from` against `vendors.contact_email`) and routes
+ * the message accordingly:
+ *   - Vendor → processVendorReply()  (records RFQ bid)
+ *   - Customer → processIncomingRequest()  (creates quote/RFQ)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Optional: verify shared secret from n8n
+    const secret = request.headers.get('x-webhook-secret');
+    const expected = process.env.AUTH_TOKEN;
+    if (expected && secret !== expected) {
+      return NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid webhook secret' } },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     const fromEmail = body.from || body.sender || body.envelope?.from || '';
