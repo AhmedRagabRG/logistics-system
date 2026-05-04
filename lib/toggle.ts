@@ -1,0 +1,34 @@
+import pool from './db';
+import type { RowDataPacket } from 'mysql2/promise';
+
+type ToggleState = 'auto_send' | 'low_confidence_only' | 'manual_approval';
+
+let cachedToggle: ToggleState | null = null;
+let cachedAt = 0;
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
+export async function getMasterLogicToggle(): Promise<ToggleState> {
+  const now = Date.now();
+
+  if (cachedToggle && now - cachedAt < CACHE_TTL_MS) {
+    return cachedToggle;
+  }
+
+  const [rows] = await pool.execute<
+    Array<RowDataPacket & { master_logic_toggle: ToggleState }>
+  >(
+    'SELECT master_logic_toggle FROM system_settings ORDER BY id DESC LIMIT 1'
+  );
+
+  const toggle = rows && rows.length > 0 ? rows[0].master_logic_toggle : 'manual_approval';
+
+  cachedToggle = toggle;
+  cachedAt = now;
+
+  return toggle;
+}
+
+export function invalidateToggleCache(): void {
+  cachedToggle = null;
+  cachedAt = 0;
+}
