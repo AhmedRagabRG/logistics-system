@@ -16,7 +16,7 @@ class PDF(FPDF):
         self.set_y(-15)
         self.set_font('ArialUnicode', 'I', 8)
         self.set_text_color(128, 128, 128)
-        self.cell(0, 10, 'Confidential -- For Internal Use Only', align='C')
+        self.cell(0, 10, 'For Internal Use', align='C')
 
     def chapter_title(self, title):
         self.set_font('ArialUnicode', 'B', 16)
@@ -112,16 +112,12 @@ pdf.set_font('ArialUnicode', '', 14)
 pdf.set_text_color(100, 100, 100)
 pdf.cell(0, 10, 'Business User Guide', align='C', new_x='LMARGIN', new_y='NEXT')
 pdf.ln(20)
-pdf.set_font('ArialUnicode', '', 10)
-pdf.set_text_color(120, 120, 120)
-pdf.cell(0, 8, 'A comprehensive guide for business users', align='C', new_x='LMARGIN', new_y='NEXT')
-pdf.cell(0, 8, 'covering system operations, workflows, and daily tasks', align='C', new_x='LMARGIN', new_y='NEXT')
-pdf.ln(30)
+pdf.ln(40)
 pdf.set_draw_color(194, 65, 12)
 pdf.line(60, pdf.get_y(), 150, pdf.get_y())
 pdf.ln(5)
 pdf.set_font('ArialUnicode', 'I', 9)
-pdf.cell(0, 8, 'Confidential -- For Internal Use Only', align='C', new_x='LMARGIN', new_y='NEXT')
+pdf.cell(0, 8, 'For Internal Use', align='C', new_x='LMARGIN', new_y='NEXT')
 
 # Table of Contents
 pdf.add_page()
@@ -580,7 +576,7 @@ pdf.set_font('ArialUnicode', '', 10)
 pdf.set_text_color(60, 60, 60)
 pdf.body_text('This is the company number where customers send their shipment requests. You can send test messages to this number to see how the system parses and processes them.')
 
-pdf.warning_box('If you want to use this test WhatsApp number to send quotes and receive vendor requests via WhatsApp, you MUST provide your list of phone numbers to the system administrator. The Meta Business Manager test number has a maximum limit of 3 registered numbers. Without adding your number to the allowed list, WhatsApp messages will fail.')
+pdf.warning_box('If you want to use this test WhatsApp number to send quotes and receive vendor requests via WhatsApp, you MUST provide your list of phone numbers to me. The Meta Business Manager test number has a maximum limit of 3 registered numbers. Without adding your number to the allowed list, WhatsApp messages will fail.')
 
 pdf.sub_title('Telegram')
 pdf.body_text('Our test Telegram bot is:')
