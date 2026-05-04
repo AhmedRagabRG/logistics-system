@@ -12,6 +12,10 @@ export async function trackCustomerMessageWindow(
   contactId: string,
   channel: string
 ): Promise<void> {
+  if (channel !== 'whatsapp') {
+    // Only WhatsApp has a 24h messaging window. Telegram bots can always send.
+    return;
+  }
   console.log(`[MSG-WINDOW] Tracking window for ${channel}:${contactId}`);
   await pool.execute<ResultSetHeader>(
     `INSERT INTO customer_messaging_windows (contact_id, channel, last_message_at)
@@ -30,6 +34,10 @@ export async function isWithinMessagingWindow(
   contactId: string,
   channel: string
 ): Promise<boolean> {
+  if (channel !== 'whatsapp') {
+    // Telegram bots can always send messages; no 24h window restriction.
+    return true;
+  }
   console.log(`[MSG-WINDOW] Checking window for ${channel}:${contactId}`);
   const [rows] = await pool.execute<
     Array<RowDataPacket & { last_message_at: Date }>

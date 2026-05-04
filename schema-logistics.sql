@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS vendors (
     country_coverage VARCHAR(255) NOT NULL,
     expertise_notes TEXT,
     priority_ranking INT NOT NULL DEFAULT 100,
+    use_custom_margin BOOLEAN NOT NULL DEFAULT FALSE,
     margin_rate DECIMAL(5,2) NOT NULL DEFAULT 0.00,
     contact_email VARCHAR(255),
     contact_phone VARCHAR(32),
@@ -112,6 +113,16 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_rate (from_currency, to_currency, effective_date),
     INDEX idx_effective_date (effective_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Customer Messaging Windows
+CREATE TABLE IF NOT EXISTS customer_messaging_windows (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    contact_id VARCHAR(128) NOT NULL,
+    channel VARCHAR(32) NOT NULL,
+    last_message_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_contact_channel (contact_id, channel),
+    INDEX idx_last_message (last_message_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Postal Codes
