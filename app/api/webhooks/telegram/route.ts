@@ -8,7 +8,7 @@ import { trackCustomerMessageWindow } from '@/lib/messaging-window';
  * Set webhook via:
  * curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
  *   -H "Content-Type: application/json" \
- *   -d '{"url":"https://yourdomain.com/api/webhooks/telegram"}'
+ *   -d '{"url":"https://9949-88-214-57-76.ngrok-free.app/api/webhooks/telegram"}'
  */
 export async function POST(request: NextRequest) {
   try {
