@@ -1,0 +1,50 @@
+-- Migration: Create countries table for dynamic country management
+CREATE TABLE IF NOT EXISTS countries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(2) NOT NULL UNIQUE,
+    name_en VARCHAR(64) NOT NULL,
+    name_tr VARCHAR(64) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_code (code),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed default countries
+INSERT INTO countries (code, name_en, name_tr, is_active) VALUES
+('TR', 'Turkey', 'Türkiye', TRUE),
+('DE', 'Germany', 'Almanya', TRUE),
+('RU', 'Russia', 'Rusya', TRUE),
+('PL', 'Poland', 'Polonya', TRUE),
+('EG', 'Egypt', 'Mısır', TRUE),
+('UA', 'Ukraine', 'Ukrayna', TRUE),
+('FR', 'France', 'Fransa', TRUE),
+('IT', 'Italy', 'İtalya', TRUE),
+('ES', 'Spain', 'İspanya', TRUE),
+('NL', 'Netherlands', 'Hollanda', TRUE),
+('BE', 'Belgium', 'Belçika', TRUE),
+('AT', 'Austria', 'Avusturya', TRUE),
+('RO', 'Romania', 'Romanya', TRUE),
+('BG', 'Bulgaria', 'Bulgaristan', TRUE),
+('GR', 'Greece', 'Yunanistan', TRUE),
+('RS', 'Serbia', 'Sırbistan', TRUE),
+('HU', 'Hungary', 'Macaristan', TRUE),
+('CZ', 'Czech Republic', 'Çekya', TRUE),
+('SK', 'Slovakia', 'Slovakya', TRUE),
+('HR', 'Croatia', 'Hırvatistan', TRUE),
+('SI', 'Slovenia', 'Slovenya', TRUE),
+('BA', 'Bosnia', 'Bosna', TRUE),
+('CH', 'Switzerland', 'İsviçre', TRUE),
+('GB', 'United Kingdom', 'Birleşik Krallık', TRUE),
+('PT', 'Portugal', 'Portekiz', TRUE),
+('LT', 'Lithuania', 'Litvanya', TRUE),
+('LV', 'Latvia', 'Letonya', TRUE),
+('EE', 'Estonia', 'Estonya', TRUE),
+('FI', 'Finland', 'Finlandiya', TRUE),
+('SE', 'Sweden', 'İsveç', TRUE),
+('NO', 'Norway', 'Norveç', TRUE),
+('DK', 'Denmark', 'Danimarka', TRUE),
+('MD', 'Moldova', 'Moldova', TRUE),
+('AL', 'Albania', 'Arnavutluk', TRUE)
+ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_tr = VALUES(name_tr), is_active = VALUES(is_active);
