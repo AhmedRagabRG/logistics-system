@@ -119,6 +119,7 @@ export async function processIncomingRequest(
         weight_kg: input.weight_kg ?? null,
         cargo_type: input.cargo_type ?? null,
         vehicle_type: null,
+        transport_mode: 'road',
         loading_date: null,
         confidence_score: 0,
         confidence: 'low',
@@ -244,9 +245,9 @@ async function createQuoteForRoute({
   // Ignore OpenAI's missing_fields — it doesn't know what the webhook already provided
   if (actuallyMissing.length > 0) {
     const [quoteResult] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, status, handling_mode, toggle_state_at_creation, is_oversize, review_reason)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [shipmentRequestId, originRegionValue, destinationRegionValue, originPostalCode, destinationPostalCode, weightKg, cargoType, 0, 0, 0, 'TRY', 'pending', handlingMode, toggle, false, `Missing fields: ${actuallyMissing.join(', ')}`]
+      `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, status, handling_mode, transport_mode, toggle_state_at_creation, is_oversize, review_reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [shipmentRequestId, originRegionValue, destinationRegionValue, originPostalCode, destinationPostalCode, weightKg, cargoType, 0, 0, 0, 'TRY', 'pending', handlingMode, parsed.transport_mode ?? 'road', toggle, false, `Missing fields: ${actuallyMissing.join(', ')}`]
     );
 
     const quoteId = quoteResult.insertId;
@@ -287,6 +288,7 @@ async function createQuoteForRoute({
       originRegion: originRegionValue,
       destinationRegion: destinationRegionValue,
       weightKg: weightKg!,
+      transportMode: parsed.transport_mode ?? 'road',
     });
   }
 
@@ -317,8 +319,8 @@ async function createQuoteForRoute({
 
   // Insert quote
   const [quoteResult] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, status, handling_mode, toggle_state_at_creation, is_oversize, review_reason)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, status, handling_mode, transport_mode, toggle_state_at_creation, is_oversize, review_reason)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       shipmentRequestId,
       originRegionValue,
@@ -333,6 +335,7 @@ async function createQuoteForRoute({
       pricingResult.currency,
       quoteStatus,
       handlingMode,
+      parsed.transport_mode ?? 'road',
       toggle,
       oversize,
       reviewReason,

@@ -6,6 +6,7 @@ export interface PricingInput {
   destinationRegion: string;
   weightKg: number;
   marginRate?: number;
+  transportMode?: 'road' | 'sea';
 }
 
 export interface PricingResult {
@@ -33,7 +34,9 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
     found: false,
   };
 
-  // 1. Try exact match first (case-insensitive)
+  const transportMode = input.transportMode ?? 'road';
+
+  // 1. Try exact match first (case-insensitive) with transport mode
   const [exactRows] = await pool.execute<
     Array<
       RowDataPacket & {
@@ -45,9 +48,9 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
   >(
     `SELECT base_price, markup_percent, currency
      FROM route_pricing
-     WHERE LOWER(origin_region) = LOWER(?) AND LOWER(destination_region) = LOWER(?) AND is_active = TRUE
+     WHERE LOWER(origin_region) = LOWER(?) AND LOWER(destination_region) = LOWER(?) AND transport_mode = ? AND is_active = TRUE
      LIMIT 1`,
-    [input.originRegion, input.destinationRegion]
+    [input.originRegion, input.destinationRegion, transportMode]
   );
 
   let rows = exactRows;
@@ -80,11 +83,13 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
          OR LOWER(destination_region) LIKE LOWER(CONCAT('%', ?, '%'))
          OR LOWER(?) LIKE LOWER(CONCAT('%', destination_region, '%'))
        )
+       AND transport_mode = ?
        AND is_active = TRUE
        LIMIT 1`,
       [
         input.originRegion, input.originRegion, input.originRegion,
         input.destinationRegion, input.destinationRegion, input.destinationRegion,
+        transportMode,
       ]
     );
     rows = flexRows;

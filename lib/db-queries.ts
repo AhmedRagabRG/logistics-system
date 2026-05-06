@@ -268,6 +268,7 @@ export interface QuoteListItem {
   final_price: number;
   currency: string;
   status: string;
+  transport_mode: string;
   is_oversize: boolean;
   rfq_id: number | null;
   review_reason: string | null;
@@ -291,6 +292,7 @@ export async function getQuotes(filters: {
   toDate?: string | null;
   channel?: string | null;
   language?: string | null;
+  transportMode?: string | null;
   search?: string | null;
   page?: number;
   limit?: number;
@@ -322,6 +324,10 @@ export async function getQuotes(filters: {
     conditions.push('s.language = ?');
     params.push(filters.language);
   }
+  if (filters.transportMode) {
+    conditions.push('q.transport_mode = ?');
+    params.push(filters.transportMode);
+  }
   if (filters.search) {
     conditions.push('(s.customer_name LIKE ? OR q.origin_region LIKE ? OR q.destination_region LIKE ? OR q.currency LIKE ?)');
     const like = `%${filters.search}%`;
@@ -335,7 +341,7 @@ export async function getQuotes(filters: {
   const total = countRows[0]?.total ?? 0;
 
   const query = `
-    SELECT q.id, q.origin_region, q.destination_region, q.final_price, q.currency, q.status,
+    SELECT q.id, q.origin_region, q.destination_region, q.final_price, q.currency, q.status, q.transport_mode,
            q.is_oversize, q.rfq_id, q.review_reason, q.created_at, q.origin_postal_code, q.destination_postal_code, q.weight_kg,
            s.channel, s.language, s.customer_name
     FROM quotes q
@@ -353,6 +359,7 @@ export async function getQuotes(filters: {
         final_price: number;
         currency: string;
         status: string;
+        transport_mode: string;
         is_oversize: boolean;
         rfq_id: number | null;
         review_reason: string | null;
@@ -375,6 +382,7 @@ export async function getQuotes(filters: {
       final_price: row.final_price,
       currency: row.currency,
       status: row.status,
+      transport_mode: row.transport_mode,
       is_oversize: row.is_oversize,
       rfq_id: row.rfq_id,
       review_reason: row.review_reason,

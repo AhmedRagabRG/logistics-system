@@ -165,9 +165,9 @@ async function createPricing(body: unknown) {
   }
   const data = parse.data;
   const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO route_pricing (origin_region, destination_region, base_price, markup_percent, currency, is_active)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [data.origin_region, data.destination_region, data.base_price, data.markup_percent, data.currency, data.is_active]
+    `INSERT INTO route_pricing (origin_region, destination_region, base_price, markup_percent, currency, transport_mode, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [data.origin_region, data.destination_region, data.base_price, data.markup_percent, data.currency, data.transport_mode, data.is_active]
   );
   return NextResponse.json({ success: true, data: { id: result.insertId } });
 }
@@ -198,6 +198,7 @@ async function updatePricing(id: number, body: unknown) {
   if (data.base_price !== undefined) { fields.push('base_price = ?'); values.push(data.base_price); }
   if (data.markup_percent !== undefined) { fields.push('markup_percent = ?'); values.push(data.markup_percent); }
   if (data.currency !== undefined) { fields.push('currency = ?'); values.push(data.currency); }
+  if (data.transport_mode !== undefined) { fields.push('transport_mode = ?'); values.push(data.transport_mode); }
   if (data.is_active !== undefined) { fields.push('is_active = ?'); values.push(data.is_active); }
 
   if (fields.length === 0) {

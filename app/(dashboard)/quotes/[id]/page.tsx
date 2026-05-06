@@ -24,6 +24,7 @@ interface QuoteDetail {
   final_price: number;
   currency: string;
   status: string;
+  transport_mode: string;
   toggle_state_at_creation: string;
   is_oversize: boolean;
   rfq_id: number | null;
@@ -46,18 +47,18 @@ async function fetchQuote(id: number): Promise<QuoteDetail | null> {
   const [rows] = await pool.execute<
     Array<RowDataPacket & QuoteDetail>
   >(
-    `SELECT q.id, q.origin_region, q.destination_region, q.origin_postal_code, q.destination_postal_code, q.weight_kg, q.cargo_type,
-            q.base_price, q.markup_percent, q.final_price, q.currency, q.status, q.toggle_state_at_creation, q.is_oversize, q.rfq_id, q.review_reason,
-            q.response_text, q.approved_by, q.approved_at, q.created_at,
-            a.display_name as approver_name,
-            r.rfq_reference, r.status as rfq_status,
-            s.language, s.channel, s.customer_name, s.customer_contact, s.raw_message
-     FROM quotes q
-     JOIN shipment_requests s ON s.id = q.shipment_request_id
-     LEFT JOIN admin_accounts a ON a.id = q.approved_by
-     LEFT JOIN rfq_records r ON r.id = q.rfq_id
-     WHERE q.id = ?
-     LIMIT 1`,
+     `SELECT q.id, q.origin_region, q.destination_region, q.origin_postal_code, q.destination_postal_code, q.weight_kg, q.cargo_type,
+             q.base_price, q.markup_percent, q.final_price, q.currency, q.status, q.transport_mode, q.toggle_state_at_creation, q.is_oversize, q.rfq_id, q.review_reason,
+             q.response_text, q.approved_by, q.approved_at, q.created_at,
+             a.display_name as approver_name,
+             r.rfq_reference, r.status as rfq_status,
+             s.language, s.channel, s.customer_name, s.customer_contact, s.raw_message
+      FROM quotes q
+      JOIN shipment_requests s ON s.id = q.shipment_request_id
+      LEFT JOIN admin_accounts a ON a.id = q.approved_by
+      LEFT JOIN rfq_records r ON r.id = q.rfq_id
+      WHERE q.id = ?
+      LIMIT 1`,
     [id]
   );
   if (!rows || rows.length === 0) return null;

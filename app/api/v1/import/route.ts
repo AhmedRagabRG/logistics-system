@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
         for (const row of rows) {
           try {
             await pool.execute<ResultSetHeader>(
-              `INSERT INTO route_pricing (origin_region, destination_region, base_price, markup_percent, currency, is_active)
-               VALUES (?, ?, ?, ?, ?, TRUE)
-               ON DUPLICATE KEY UPDATE base_price = VALUES(base_price), markup_percent = VALUES(markup_percent), currency = VALUES(currency)`,
-              [row.origin_region, row.destination_region, row.base_price, row.markup_percent, row.currency]
+              `INSERT INTO route_pricing (origin_region, destination_region, base_price, markup_percent, currency, transport_mode, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, TRUE)
+               ON DUPLICATE KEY UPDATE base_price = VALUES(base_price), markup_percent = VALUES(markup_percent), currency = VALUES(currency), transport_mode = VALUES(transport_mode)`,
+              [row.origin_region, row.destination_region, row.base_price, row.markup_percent, row.currency, row.transport_mode]
             );
             inserted++;
           } catch {

@@ -15,11 +15,12 @@ export async function GET(request: NextRequest) {
     const toDate = searchParams.get('to_date');
     const channel = searchParams.get('channel');
     const language = searchParams.get('language');
+    const transportMode = searchParams.get('transport_mode');
     const search = searchParams.get('search');
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') ?? '20', 10)));
 
-    const data = await getQuotes({ status, fromDate, toDate, channel, language, search, page, limit });
+    const data = await getQuotes({ status, fromDate, toDate, channel, language, transportMode, search, page, limit });
 
     return NextResponse.json({ success: true, data });
   } catch (error) {

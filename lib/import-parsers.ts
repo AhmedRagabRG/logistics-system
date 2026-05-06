@@ -62,6 +62,7 @@ export interface RoutePricingRow {
   base_price: number;
   markup_percent: number;
   currency: string;
+  transport_mode: 'road' | 'sea';
 }
 
 export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
@@ -79,6 +80,8 @@ export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
 
     const origin = String(row[1] || '').trim();
     const destination = String(row[2] || '').trim();
+    const transportModeRaw = String(row[3] || '').trim().toLowerCase();
+    const transport_mode: 'road' | 'sea' = transportModeRaw === 'sea' || transportModeRaw === 'deniz' ? 'sea' : 'road';
     const priceExport = parseFloat(String(row[4] || '').replace(/,/g, ''));
     const currency = String(row[5] || 'EUR').trim().toUpperCase();
     const priceImport = parseFloat(String(row[6] || '').replace(/,/g, ''));
@@ -93,6 +96,7 @@ export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
         base_price: priceExport,
         markup_percent: 0,
         currency,
+        transport_mode,
       });
     }
 
@@ -104,6 +108,7 @@ export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
         base_price: priceImport,
         markup_percent: 0,
         currency,
+        transport_mode,
       });
     }
   }

@@ -47,10 +47,11 @@ const REQUIREMENTS: Record<
   },
   route_pricing: {
     sheetNote:
-      'First sheet only. The first 2 rows are treated as headers — actual data must start from row 3. Columns are positional (A=index, B=origin, C=destination, D=tonnage, E=export price, F=currency, G=import price).',
+      'First sheet only. The first 2 rows are treated as headers — actual data must start from row 3. Columns are positional (A=index, B=origin, C=destination, D=transport mode, E=export price, F=currency, G=import price). Transport mode: "road" or "sea" (default: road).',
     columns: [
       { key: 'B — Origin Region', label: 'Origin Region', required: true },
       { key: 'C — Destination Region', label: 'Destination Region', required: true },
+      { key: 'D — Transport Mode', label: 'Transport Mode (road/sea)', required: false },
       { key: 'E — Export Price', label: 'Export Price', required: true },
       { key: 'F — Currency', label: 'Currency', required: false },
       { key: 'G — Import Price', label: 'Import Price', required: false },
@@ -58,6 +59,7 @@ const REQUIREMENTS: Record<
     example: {
       'B — Origin Region': 'Istanbul',
       'C — Destination Region': 'SI-West',
+      'D — Transport Mode': 'road',
       'E — Export Price': '1500',
       'F — Currency': 'EUR',
       'G — Import Price': '1600',

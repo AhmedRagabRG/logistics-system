@@ -15,6 +15,7 @@ export interface ParsedShipmentRequest {
   weight_kg: number | null;
   cargo_type: string | null;
   vehicle_type: string | null;
+  transport_mode: 'road' | 'sea' | null;
   loading_date: string | null;
   confidence_score: number;
   confidence: 'high' | 'medium' | 'low';
@@ -36,6 +37,7 @@ Extract the following fields for EACH shipment request:
 - destination_country: Country of unloading (use 2-letter ISO code if possible, or full name)
 - weight_kg: Weight in kilograms (convert tons to kg). Return as number.
 - cargo_type: Type of cargo (e.g., "General Cargo", "Oversize", "Refrigerated", "Break bulk", "FTL")
+- transport_mode: Transport mode requested - "road" for road/truck transport, "sea" for sea/maritime/container transport. If not specified, default to "road".
 - vehicle_type: Requested vehicle type if mentioned (e.g., "optima", "mega", "kapalı kasa")
 - loading_date: Loading date if mentioned (ISO format YYYY-MM-DD)
 - language: Detected language of the message ("ar", "tr", or "en")
@@ -88,6 +90,7 @@ function mapParsedItem(parsed: Record<string, unknown>): ParsedShipmentRequest {
     weight_kg: typeof parsed.weight_kg === 'number' ? parsed.weight_kg : typeof parsed.weight_kg === 'string' ? parseFloat(parsed.weight_kg) || null : null,
     cargo_type: typeof parsed.cargo_type === 'string' ? parsed.cargo_type : null,
     vehicle_type: typeof parsed.vehicle_type === 'string' ? parsed.vehicle_type : null,
+    transport_mode: (parsed.transport_mode === 'sea' ? 'sea' : 'road') as 'road' | 'sea',
     loading_date: typeof parsed.loading_date === 'string' ? parsed.loading_date : null,
     confidence_score: confidenceScore,
     confidence: confidenceLabel,

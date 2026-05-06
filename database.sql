@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS quotes (
     currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
     status ENUM('pending', 'approved', 'rejected', 'ready_to_send', 'sent') NOT NULL DEFAULT 'pending',
     handling_mode ENUM('auto', 'manual', 'external') NOT NULL DEFAULT 'manual',
+    transport_mode ENUM('road', 'sea') NOT NULL DEFAULT 'road',
     rfq_id INT,
     toggle_state_at_creation VARCHAR(32) NOT NULL DEFAULT 'manual_approval',
     is_oversize BOOLEAN NOT NULL DEFAULT FALSE,
@@ -103,6 +104,7 @@ CREATE TABLE IF NOT EXISTS quotes (
     FOREIGN KEY (approved_by) REFERENCES admin_accounts(id) ON DELETE SET NULL,
     INDEX idx_status (status),
     INDEX idx_handling_mode (handling_mode),
+    INDEX idx_transport_mode (transport_mode),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -114,11 +116,13 @@ CREATE TABLE IF NOT EXISTS route_pricing (
     base_price DECIMAL(12,2) NOT NULL,
     markup_percent DECIMAL(5,2) NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
+    transport_mode ENUM('road', 'sea') NOT NULL DEFAULT 'road',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_route (origin_region, destination_region),
-    INDEX idx_active (is_active)
+    UNIQUE KEY uk_route_mode (origin_region, destination_region, transport_mode),
+    INDEX idx_active (is_active),
+    INDEX idx_transport_mode (transport_mode)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Vendors (dealer/supplier network)

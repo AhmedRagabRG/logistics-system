@@ -15,6 +15,7 @@ interface Pricing {
   base_price: number;
   markup_percent: number;
   currency: string;
+  transport_mode: 'road' | 'sea';
   is_active: boolean;
 }
 
@@ -31,6 +32,7 @@ export default function PricingPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [transportModeFilter, setTransportModeFilter] = useState<'all' | 'road' | 'sea'>('all');
 
   const fetchPricing = useCallback(async () => {
     setLoading(true);
@@ -77,8 +79,11 @@ export default function PricingPage() {
     if (currencyFilter !== 'all') {
       result = result.filter((p) => p.currency === currencyFilter);
     }
+    if (transportModeFilter !== 'all') {
+      result = result.filter((p) => p.transport_mode === transportModeFilter);
+    }
     return result;
-  }, [pricing, search, statusFilter, currencyFilter]);
+  }, [pricing, search, statusFilter, currencyFilter, transportModeFilter]);
 
   const { selectedIds, toggle, toggleAll, clear, isSelected, allSelected, someSelected } = useBulkSelection<number>(filteredPricing.map((p) => p.id));
 
@@ -92,7 +97,7 @@ export default function PricingPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
     clear();
-  }, [search, statusFilter, currencyFilter, clear]);
+  }, [search, statusFilter, currencyFilter, transportModeFilter, clear]);
 
   async function handleDelete(id: number) {
     if (!confirm(_t('vendor_delete_confirm'))) return;
@@ -187,6 +192,11 @@ export default function PricingPage() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+            <select value={transportModeFilter} onChange={(e) => setTransportModeFilter(e.target.value as 'all' | 'road' | 'sea')}>
+              <option value="all">{_t('filter_transport_mode')}</option>
+              <option value="road">{_t('road_transport')}</option>
+              <option value="sea">{_t('sea_transport')}</option>
+            </select>
             {selectedIds.length > 0 && (
               <button onClick={handleBulkDelete} className="btn btn-danger text-xs">
                 {_t('delete_selected')} ({selectedIds.length})
@@ -217,6 +227,7 @@ export default function PricingPage() {
                   <th>{_t('label_destination')}</th>
                   <th className="text-right">{_t('label_price')}</th>
                   <th>{_t('label_currency')}</th>
+                  <th>{_t('transport_mode')}</th>
                   <th>{_t('label_status')}</th>
                   <th className="text-right">{_t('actions')}</th>
                 </tr>
@@ -236,6 +247,11 @@ export default function PricingPage() {
                     <td>{p.destination_region}</td>
                     <td className="text-right font-mono">{p.base_price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                     <td className="font-mono text-xs">{p.currency}</td>
+                    <td>
+                      <span className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.transport_mode === 'sea' ? 'border-[var(--info)] text-[var(--info)]' : 'border-[var(--success)] text-[var(--success)]'}`}>
+                        {p.transport_mode === 'sea' ? _t('sea_transport') : _t('road_transport')}
+                      </span>
+                    </td>
                     <td>
                       <span className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.is_active ? 'border-[var(--success)] text-[var(--success)]' : 'border-[var(--muted)] text-[var(--muted)]'}`}>
                         {p.is_active ? _t('status_active') : _t('status_inactive')}

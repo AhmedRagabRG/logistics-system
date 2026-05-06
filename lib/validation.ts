@@ -73,6 +73,7 @@ export const routePricingSchema = z.object({
   base_price: z.number().positive(),
   markup_percent: z.number().min(0).max(1000),
   currency: z.string().length(3).default('TRY'),
+  transport_mode: z.enum(['road', 'sea']).default('road'),
   is_active: z.boolean().default(true),
 });
 

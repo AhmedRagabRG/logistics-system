@@ -18,6 +18,7 @@ interface QuoteDetailFieldsProps {
     final_price: number;
     currency: string;
     status: string;
+    transport_mode: string;
     toggle_state_at_creation: string;
     is_oversize: boolean;
     review_reason: string | null;
@@ -136,6 +137,14 @@ export default function QuoteDetailFields({ quote: initialQuote, locale }: Quote
           onUpdate={handleUpdate}
         />
 
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">{_t('transport_mode')}</div>
+          <div className="mt-0.5 text-sm font-bold uppercase text-[var(--foreground)]">
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${quote.transport_mode === 'sea' ? 'bg-[var(--info)]/10 text-[var(--info)]' : 'bg-[var(--success)]/10 text-[var(--success)]'}`}>
+              {quote.transport_mode === 'sea' ? _t('sea_transport') : _t('road_transport')}
+            </span>
+          </div>
+        </div>
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">{_t('language_label')}</div>
           <div className="mt-0.5 text-sm font-bold uppercase text-[var(--foreground)]">{quote.language}</div>

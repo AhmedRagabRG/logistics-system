@@ -15,6 +15,7 @@ interface QuoteItem {
   final_price: number;
   currency: string;
   status: string;
+  transport_mode: string;
   is_oversize: boolean;
   rfq_id: number | null;
   review_reason: string | null;
@@ -41,6 +42,7 @@ export default function QuotesPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [languageFilter, setLanguageFilter] = useState('');
+  const [transportModeFilter, setTransportModeFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
@@ -56,6 +58,7 @@ export default function QuotesPage() {
       if (statusFilter) params.set('status', statusFilter);
       if (channelFilter) params.set('channel', channelFilter);
       if (languageFilter) params.set('language', languageFilter);
+      if (transportModeFilter) params.set('transport_mode', transportModeFilter);
       if (fromDate) params.set('from_date', fromDate);
       if (toDate) params.set('to_date', toDate);
 
@@ -76,7 +79,7 @@ export default function QuotesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, channelFilter, languageFilter, fromDate, toDate, _t]);
+  }, [page, search, statusFilter, channelFilter, languageFilter, transportModeFilter, fromDate, toDate, _t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -89,7 +92,7 @@ export default function QuotesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
     clear();
-  }, [search, statusFilter, channelFilter, languageFilter, fromDate, toDate, clear]);
+  }, [search, statusFilter, channelFilter, languageFilter, transportModeFilter, fromDate, toDate, clear]);
 
   async function handleBulkDelete() {
     if (selectedIds.length === 0) return;
@@ -155,6 +158,11 @@ export default function QuotesPage() {
                 <option key={lang} value={lang}>{lang.toUpperCase()}</option>
               ))}
             </select>
+            <select value={transportModeFilter} onChange={(e) => setTransportModeFilter(e.target.value)}>
+              <option value="">{_t('filter_all')} — {_t('filter_transport_mode')}</option>
+              <option value="road">{_t('road_transport')}</option>
+              <option value="sea">{_t('sea_transport')}</option>
+            </select>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
@@ -166,9 +174,9 @@ export default function QuotesPage() {
               <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
             <div className="flex items-end">
-              {(fromDate || toDate || statusFilter || channelFilter || languageFilter || search) && (
+              {(fromDate || toDate || statusFilter || channelFilter || languageFilter || transportModeFilter || search) && (
                 <button
-                  onClick={() => { setFromDate(''); setToDate(''); setStatusFilter(''); setChannelFilter(''); setLanguageFilter(''); setSearch(''); }}
+                  onClick={() => { setFromDate(''); setToDate(''); setStatusFilter(''); setChannelFilter(''); setLanguageFilter(''); setTransportModeFilter(''); setSearch(''); }}
                   className="btn btn-ghost text-xs"
                 >
                   Clear filters

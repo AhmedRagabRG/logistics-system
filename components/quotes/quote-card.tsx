@@ -9,6 +9,7 @@ interface QuoteCardProps {
     final_price: number;
     currency: string;
     status: string;
+    transport_mode?: string;
     is_oversize: boolean;
     rfq_id: number | null;
     review_reason: string | null;
@@ -70,6 +71,11 @@ export default function QuoteCard({ quote, locale = 'tr' }: QuoteCardProps) {
           <span className={`px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider border ${cov.color}`}>
             {cov.label}
           </span>
+          {quote.transport_mode === 'sea' && (
+            <span className="px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider border border-[var(--info)]/25 text-[var(--info)] bg-[var(--info)]/8">
+              Sea
+            </span>
+          )}
         </div>
 
         {/* Row 2: Customer + Route */}

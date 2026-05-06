@@ -11,6 +11,7 @@ interface PricingFormProps {
     base_price: number;
     markup_percent: number;
     currency: string;
+    transport_mode: 'road' | 'sea';
     is_active: boolean;
   };
   onSuccess?: () => void;
@@ -24,6 +25,7 @@ export default function PricingForm({ initialData, onSuccess }: PricingFormProps
     base_price: initialData?.base_price ?? 0,
     markup_percent: initialData?.markup_percent ?? 0,
     currency: initialData?.currency ?? 'EUR',
+    transport_mode: initialData?.transport_mode ?? 'road',
     is_active: initialData?.is_active ?? true,
   });
   const [loading, setLoading] = useState(false);
@@ -85,6 +87,16 @@ export default function PricingForm({ initialData, onSuccess }: PricingFormProps
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('label_currency')}</label>
           <input type="text" maxLength={3} value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('transport_mode')}</label>
+          <select value={form.transport_mode} onChange={(e) => setForm({ ...form, transport_mode: e.target.value as 'road' | 'sea' })} className="w-full text-xs">
+            <option value="road">{_t('road_transport')}</option>
+            <option value="sea">{_t('sea_transport')}</option>
+          </select>
         </div>
       </div>
 

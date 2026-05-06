@@ -323,7 +323,12 @@ export type TranslationKey =
   | 'test_messaging_send'
   | 'test_messaging_result'
   | 'test_messaging_success'
-  | 'test_messaging_failed';
+  | 'test_messaging_failed'
+  // Transport mode
+  | 'transport_mode'
+  | 'road_transport'
+  | 'sea_transport'
+  | 'filter_transport_mode';
 
 const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
   tr: {
@@ -622,6 +627,10 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     test_messaging_result: 'Sonuç',
     test_messaging_success: 'Başarılı',
     test_messaging_failed: 'Başarısız',
+    transport_mode: 'Taşıma Modu',
+    road_transport: 'Kara',
+    sea_transport: 'Deniz',
+    filter_transport_mode: 'Taşıma Modu',
   },
   en: {
     app_title: 'Dashboard',
@@ -919,6 +928,10 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     test_messaging_result: 'Result',
     test_messaging_success: 'Success',
     test_messaging_failed: 'Failed',
+    transport_mode: 'Transport Mode',
+    road_transport: 'Road',
+    sea_transport: 'Sea',
+    filter_transport_mode: 'Transport Mode',
   },
 };
 
