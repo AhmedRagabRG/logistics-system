@@ -1,7 +1,7 @@
 import pool from './db';
 import { getMasterLogicToggle } from './toggle';
 import { calculatePricing, isOversize } from './pricing';
-import { resolveRegionFromPostalCode, resolveCountryFromPostalCode } from './geo';
+import { resolveRegionFromPostalCode, resolveCountryFromPostalCode, resolveCountryFromCity } from './geo';
 import { selectVendorsForCountry } from './vendor-selector';
 import { parseShipmentMessages, generateCustomerResponse, generateVendorMessage } from './openai';
 import { logPricingEvent, logVendorEvent } from './audit';
@@ -346,15 +346,39 @@ async function createQuoteForRoute({
   let rfqReference: string | null = null;
 
   if (!pricingResult.found && !oversize) {
-    // Prefer explicitly stated country from the message; only resolve from postal code as fallback
-    const targetCountry = parsed.destination_country ?? await resolveCountryFromPostalCode(destinationPostalCode!) ?? 'UNKNOWN';
+    // ─── Determine target country for vendor selection ───
+    // We need the DESTINATION country because vendors who cover the destination
+    // are the ones who can deliver there (or have partners there).
+    // Fallback chain: parsed destination country → postal code → city name → origin country (last resort)
+
+    let targetCountry: string | null = parsed.destination_country ?? null;
+    let targetCountrySource = 'parsed.destination_country';
+
+    if (!targetCountry && destinationPostalCode) {
+      targetCountry = await resolveCountryFromPostalCode(destinationPostalCode);
+      if (targetCountry) targetCountrySource = 'destination_postal_code';
+    }
+
+    if (!targetCountry && destinationCity) {
+      targetCountry = resolveCountryFromCity(destinationCity);
+      if (targetCountry) targetCountrySource = 'destination_city';
+    }
+
+    if (!targetCountry && originCountry) {
+      targetCountry = originCountry;
+      targetCountrySource = 'origin_country (fallback)';
+    }
+
+    const finalTargetCountry = targetCountry ?? 'UNKNOWN';
+
+    console.log(`[RFQ-AUTO] quote=${quoteId} origin="${originRegionValue}" dest="${destinationRegionValue}" targetCountry="${finalTargetCountry}" (source: ${targetCountrySource})`);
 
     // Select ALL active vendors for target country (no limit)
-    const activeVendors = await selectVendorsForCountry(targetCountry);
+    const activeVendors = await selectVendorsForCountry(finalTargetCountry);
 
     if (activeVendors.length === 0) {
       // No vendors found for this route — update review reason to be honest
-      reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. No vendors found for ${targetCountry}.`;
+      reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. No vendors found for ${finalTargetCountry}.`;
     }
 
     if (activeVendors.length > 0) {
@@ -369,7 +393,7 @@ async function createQuoteForRoute({
       const [rfqResult] = await pool.execute<ResultSetHeader>(
         `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status)
          VALUES (?, ?, ?, ?, ?)`,
-        [quoteId, rfqReference, targetCountry, JSON.stringify(vendorIds), 'open']
+        [quoteId, rfqReference, finalTargetCountry, JSON.stringify(vendorIds), 'open']
       );
 
       rfqId = rfqResult.insertId;
@@ -433,7 +457,7 @@ async function createQuoteForRoute({
             // Email / Telegram: free-form text works fine
             const msg = await generateVendorMessage({
               rfq_reference: rfqReference,
-              target_country: targetCountry,
+              target_country: finalTargetCountry,
               origin_region: String(originRegionValue),
               destination_region: String(destinationRegionValue),
               weight_kg: weightKg!,

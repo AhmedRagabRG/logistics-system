@@ -7,15 +7,47 @@ import { useDashboardT } from '@/lib/i18n-client';
 interface CreateRfqFormProps {
   quoteId: number;
   locale: string;
+  destinationRegion?: string | null;
 }
 
-export default function CreateRfqForm({ quoteId, locale }: CreateRfqFormProps) {
+export default function CreateRfqForm({ quoteId, locale, destinationRegion }: CreateRfqFormProps) {
   const _t = useDashboardT();
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [targetCountry, setTargetCountry] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-detect country from destination region when form opens
+  const detectCountry = (region: string | null | undefined): string => {
+    if (!region) return '';
+    const r = region.toLowerCase();
+    if (r.includes('turkey') || r.includes('türkiye') || r.includes('ankara') || r.includes('istanbul') || r.includes('izmir') || r.includes('mersin') || r.includes('bursa') || r.includes('antalya')) return 'TR';
+    if (r.includes('germany') || r.includes('almanya') || r.includes('berlin') || r.includes('munich') || r.includes('münih') || r.includes('hamburg') || r.includes('frankfurt') || r.includes('köln') || r.includes('cologne') || r.includes('stuttgart') || r.includes('düsseldorf')) return 'DE';
+    if (r.includes('egypt') || r.includes('mısır') || r.includes('cairo') || r.includes('alexandria') || r.includes('luxor')) return 'EG';
+    if (r.includes('france') || r.includes('fransa') || r.includes('paris') || r.includes('lyon') || r.includes('marseille')) return 'FR';
+    if (r.includes('italy') || r.includes('italya') || r.includes('rome') || r.includes('milano') || r.includes('milan') || r.includes('napoli') || r.includes('naples')) return 'IT';
+    if (r.includes('spain') || r.includes('ispanya') || r.includes('madrid') || r.includes('barcelona')) return 'ES';
+    if (r.includes('netherlands') || r.includes('hollanda') || r.includes('amsterdam') || r.includes('rotterdam')) return 'NL';
+    if (r.includes('belgium') || r.includes('belçika') || r.includes('brussels') || r.includes('bruxelles')) return 'BE';
+    if (r.includes('austria') || r.includes('avusturya') || r.includes('vienna') || r.includes('wien')) return 'AT';
+    if (r.includes('poland') || r.includes('polonya') || r.includes('warsaw') || r.includes('warszawa') || r.includes('krakow')) return 'PL';
+    if (r.includes('czech') || r.includes('çekya') || r.includes('prague') || r.includes('praha')) return 'CZ';
+    if (r.includes('hungary') || r.includes('macaristan') || r.includes('budapest')) return 'HU';
+    if (r.includes('romania') || r.includes('romanya') || r.includes('bucharest') || r.includes('bucuresti')) return 'RO';
+    if (r.includes('bulgaria') || r.includes('bulgaristan') || r.includes('sofia')) return 'BG';
+    if (r.includes('greece') || r.includes('yunanistan') || r.includes('athens') || r.includes('athina')) return 'GR';
+    if (r.includes('serbia') || r.includes('sırbistan') || r.includes('belgrade') || r.includes('beograd')) return 'RS';
+    if (r.includes('croatia') || r.includes('hirvatistan') || r.includes('zagreb')) return 'HR';
+    if (r.includes('slovenia') || r.includes('slovenya') || r.includes('ljubljana')) return 'SI';
+    if (r.includes('slovakia') || r.includes('slovakya') || r.includes('bratislava')) return 'SK';
+    if (r.includes('bosnia') || r.includes('bosna') || r.includes('sarajevo')) return 'BA';
+    if (r.includes('switzerland') || r.includes('isviçre') || r.includes('zurich') || r.includes('zürich') || r.includes('geneva') || r.includes('genève')) return 'CH';
+    if (r.includes('uk') || r.includes('united kingdom') || r.includes('birleşik krallık') || r.includes('england') || r.includes('london') || r.includes('manchester')) return 'GB';
+    if (r.includes('russia') || r.includes('rusya') || r.includes('moscow') || r.includes('moskova') || r.includes('russian federation')) return 'RU';
+    if (r.includes('ukraine') || r.includes('ukrayna') || r.includes('kyiv') || r.includes('kiev')) return 'UA';
+    return '';
+  };
 
   // Common countries with vendor coverage — can be expanded or fetched dynamically
   const countryOptions = [
@@ -77,7 +109,11 @@ export default function CreateRfqForm({ quoteId, locale }: CreateRfqFormProps) {
   if (!showForm) {
     return (
       <button
-        onClick={() => setShowForm(true)}
+        onClick={() => {
+          const detected = detectCountry(destinationRegion);
+          if (detected) setTargetCountry(detected);
+          setShowForm(true);
+        }}
         className="btn btn-primary text-xs"
       >
         {locale === 'tr' ? 'RFQ Oluştur' : 'Create RFQ'}
