@@ -20,6 +20,7 @@ export type TranslationKey =
   | 'nav_settings'
   | 'nav_exchange_rates'
   | 'nav_import'
+  | 'nav_countries'
   | 'nav_operations'
   | 'logout'
   | 'language'
@@ -286,7 +287,18 @@ export type TranslationKey =
   | 'unmatched_replies_mark_resolved'
   | 'unmatched_replies_mark_ignored'
   | 'unmatched_replies_mark_resolved_failed'
-  | 'unmatched_replies_mark_ignored_failed';
+  | 'unmatched_replies_mark_ignored_failed'
+  // Countries
+  | 'countries_title'
+  | 'label_code'
+  | 'label_name_en'
+  | 'label_name_tr'
+  | 'label_active'
+  | 'active'
+  | 'inactive'
+  | 'all_status'
+  | 'yes'
+  | 'no';
 
 const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
   tr: {
@@ -551,6 +563,17 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     unmatched_replies_mark_ignored: 'Yoksay',
     unmatched_replies_mark_resolved_failed: 'İşaretlenemedi',
     unmatched_replies_mark_ignored_failed: 'Yoksayma başarısız',
+    nav_countries: 'Ülkeler',
+    countries_title: 'Ülkeler',
+    label_code: 'Kod',
+    label_name_en: 'İngilizce Ad',
+    label_name_tr: 'Türkçe Ad',
+    label_active: 'Aktif',
+    active: 'Aktif',
+    inactive: 'Pasif',
+    all_status: 'Tümü',
+    yes: 'Evet',
+    no: 'Hayır',
   },
   en: {
     app_title: 'Dashboard',
@@ -814,6 +837,17 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     unmatched_replies_mark_ignored: 'Ignore',
     unmatched_replies_mark_resolved_failed: 'Failed to mark resolved',
     unmatched_replies_mark_ignored_failed: 'Failed to ignore',
+    nav_countries: 'Countries',
+    countries_title: 'Countries',
+    label_code: 'Code',
+    label_name_en: 'English Name',
+    label_name_tr: 'Turkish Name',
+    label_active: 'Active',
+    active: 'Active',
+    inactive: 'Inactive',
+    all_status: 'All',
+    yes: 'Yes',
+    no: 'No',
   },
 };
 
