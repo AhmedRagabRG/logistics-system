@@ -491,3 +491,72 @@ export async function getRFQs(filters: {
 
   return { rfqs, pagination: { page, limit, total } };
 }
+
+// ─── System Status ─────────────────────────────────────────────────────────
+
+export interface SystemStatusData {
+  table_counts: {
+    vendors: number;
+    active_vendors: number;
+    route_pricing: number;
+    postal_codes: number;
+    countries: number;
+    active_countries: number;
+    exchange_rates: number;
+    quotes: number;
+    shipment_requests: number;
+  };
+  config_status: {
+    whatsapp_configured: boolean;
+    telegram_configured: boolean;
+    email_n8n_configured: boolean;
+    email_smtp_configured: boolean;
+    openai_configured: boolean;
+    db_connected: boolean;
+  };
+  warnings: string[];
+}
+
+export async function getSystemStatus(): Promise<SystemStatusData> {
+  const [vendorRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total, SUM(is_active) as active FROM vendors`);
+  const [pricingRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM route_pricing`);
+  const [postalRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM postal_codes`);
+  const [countryRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total, SUM(is_active) as active FROM countries`);
+  const [rateRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM exchange_rates`);
+  const [quoteRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM quotes`);
+  const [requestRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM shipment_requests`);
+
+  const table_counts = {
+    vendors: Number(vendorRows[0]?.total ?? 0),
+    active_vendors: Number(vendorRows[0]?.active ?? 0),
+    route_pricing: Number(pricingRows[0]?.total ?? 0),
+    postal_codes: Number(postalRows[0]?.total ?? 0),
+    countries: Number(countryRows[0]?.total ?? 0),
+    active_countries: Number(countryRows[0]?.active ?? 0),
+    exchange_rates: Number(rateRows[0]?.total ?? 0),
+    quotes: Number(quoteRows[0]?.total ?? 0),
+    shipment_requests: Number(requestRows[0]?.total ?? 0),
+  };
+
+  const config_status = {
+    whatsapp_configured: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+    telegram_configured: !!process.env.TELEGRAM_BOT_TOKEN,
+    email_n8n_configured: !!process.env.N8N_EMAIL_WEBHOOK_URL,
+    email_smtp_configured: !!process.env.SMTP_HOST && !!process.env.SMTP_USER,
+    openai_configured: !!process.env.OPENAI_API_KEY,
+    db_connected: true,
+  };
+
+  const warnings: string[] = [];
+  if (table_counts.active_vendors === 0) warnings.push('No active vendors found. Add vendors in Master Data > Vendors.');
+  if (table_counts.route_pricing === 0) warnings.push('No route pricing found. Import pricing data in Master Data > Import.');
+  if (table_counts.postal_codes === 0) warnings.push('No postal codes found. Import postal code data in Master Data > Import.');
+  if (table_counts.active_countries === 0) warnings.push('No active countries found. Add countries in Master Data > Countries.');
+  if (table_counts.exchange_rates === 0) warnings.push('No exchange rates found. Add rates in Master Data > Exchange Rates.');
+  if (!config_status.whatsapp_configured) warnings.push('WhatsApp not configured. Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID in .env.local.');
+  if (!config_status.telegram_configured) warnings.push('Telegram not configured. Set TELEGRAM_BOT_TOKEN in .env.local.');
+  if (!config_status.email_n8n_configured && !config_status.email_smtp_configured) warnings.push('Email not configured. Set N8N_EMAIL_WEBHOOK_URL (preferred) or SMTP_HOST/SMTP_USER in .env.local.');
+  if (!config_status.openai_configured) warnings.push('OpenAI not configured. Set OPENAI_API_KEY in .env.local.');
+
+  return { table_counts, config_status, warnings };
+}

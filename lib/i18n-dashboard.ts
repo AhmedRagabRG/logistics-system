@@ -298,7 +298,19 @@ export type TranslationKey =
   | 'inactive'
   | 'all_status'
   | 'yes'
-  | 'no';
+  | 'no'
+  // System status
+  | 'system_health_title'
+  | 'system_health_db'
+  | 'system_health_vendors'
+  | 'system_health_pricing'
+  | 'system_health_postal'
+  | 'system_health_countries'
+  | 'system_health_rates'
+  | 'system_health_config'
+  | 'system_health_warnings'
+  | 'system_health_ok'
+  | 'system_health_missing';
 
 const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
   tr: {
@@ -574,6 +586,17 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     all_status: 'Tümü',
     yes: 'Evet',
     no: 'Hayır',
+    system_health_title: 'Sistem Durumu',
+    system_health_db: 'Veritabanı',
+    system_health_vendors: 'Tedarikçiler',
+    system_health_pricing: 'Rota Fiyatları',
+    system_health_postal: 'Posta Kodları',
+    system_health_countries: 'Ülkeler',
+    system_health_rates: 'Döviz Kurları',
+    system_health_config: 'Yapılandırma',
+    system_health_warnings: 'Uyarılar',
+    system_health_ok: 'Tamam',
+    system_health_missing: 'Eksik',
   },
   en: {
     app_title: 'Dashboard',
@@ -848,6 +871,17 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     all_status: 'All',
     yes: 'Yes',
     no: 'No',
+    system_health_title: 'System Health',
+    system_health_db: 'Database',
+    system_health_vendors: 'Vendors',
+    system_health_pricing: 'Route Pricing',
+    system_health_postal: 'Postal Codes',
+    system_health_countries: 'Countries',
+    system_health_rates: 'Exchange Rates',
+    system_health_config: 'Configuration',
+    system_health_warnings: 'Warnings',
+    system_health_ok: 'OK',
+    system_health_missing: 'Missing',
   },
 };
 

@@ -2,15 +2,16 @@ import Link from 'next/link';
 import StatusBadge from '@/components/ui/status-badge';
 import { getDashboardLocale } from '@/lib/i18n-server';
 import { t } from '@/lib/i18n-dashboard';
-import { getAnalytics } from '@/lib/db-queries';
+import { getAnalytics, getSystemStatus } from '@/lib/db-queries';
 
 export default async function DashboardHomePage() {
   const locale = await getDashboardLocale();
   let analytics: Awaited<ReturnType<typeof getAnalytics>> | null = null;
+  let systemStatus: Awaited<ReturnType<typeof getSystemStatus>> | null = null;
   let error: string | null = null;
 
   try {
-    analytics = await getAnalytics();
+    [analytics, systemStatus] = await Promise.all([getAnalytics(), getSystemStatus()]);
   } catch (e) {
     error = e instanceof Error ? e.message : t('unknown_error', locale);
   }
@@ -82,6 +83,70 @@ export default async function DashboardHomePage() {
               </div>
             ))}
           </div>
+
+          {/* System Health */}
+          {systemStatus && (
+            <div className="panel">
+              <div className="panel-header flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider">{t('system_health_title', locale)}</h3>
+                {systemStatus.warnings.length > 0 && (
+                  <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)]">
+                    {systemStatus.warnings.length} {t('system_health_warnings', locale)}
+                  </span>
+                )}
+              </div>
+              <div className="panel-body">
+                <div className="grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)] sm:grid-cols-3 lg:grid-cols-6">
+                  {[
+                    { label: t('system_health_db', locale), value: systemStatus.table_counts.shipment_requests, ok: true },
+                    { label: t('system_health_vendors', locale), value: `${systemStatus.table_counts.active_vendors} / ${systemStatus.table_counts.vendors}`, ok: systemStatus.table_counts.active_vendors > 0 },
+                    { label: t('system_health_pricing', locale), value: systemStatus.table_counts.route_pricing, ok: systemStatus.table_counts.route_pricing > 0 },
+                    { label: t('system_health_postal', locale), value: systemStatus.table_counts.postal_codes, ok: systemStatus.table_counts.postal_codes > 0 },
+                    { label: t('system_health_countries', locale), value: `${systemStatus.table_counts.active_countries} / ${systemStatus.table_counts.countries}`, ok: systemStatus.table_counts.active_countries > 0 },
+                    { label: t('system_health_rates', locale), value: systemStatus.table_counts.exchange_rates, ok: systemStatus.table_counts.exchange_rates > 0 },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-[var(--surface)] px-3 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">{item.label}</div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="font-mono text-sm font-bold">{item.value}</span>
+                        <span className={`text-[10px] font-semibold uppercase px-1 py-0.5 rounded ${item.ok ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
+                          {item.ok ? t('system_health_ok', locale) : t('system_health_missing', locale)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {systemStatus.warnings.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {systemStatus.warnings.map((warning, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs text-[var(--accent)]">
+                        <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
+                        {warning}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    { label: 'WhatsApp', ok: systemStatus.config_status.whatsapp_configured },
+                    { label: 'Telegram', ok: systemStatus.config_status.telegram_configured },
+                    { label: 'Email (n8n)', ok: systemStatus.config_status.email_n8n_configured },
+                    { label: 'Email (SMTP)', ok: systemStatus.config_status.email_smtp_configured },
+                    { label: 'OpenAI', ok: systemStatus.config_status.openai_configured },
+                  ].map((cfg) => (
+                    <div key={cfg.label} className="flex items-center justify-between rounded border border-[var(--border)] px-2 py-1.5">
+                      <span className="text-[10px] font-semibold uppercase text-[var(--muted)]">{cfg.label}</span>
+                      <span className={`text-[10px] font-bold uppercase ${cfg.ok ? 'text-[var(--success)]' : 'text-[var(--muted)]'}`}>
+                        {cfg.ok ? t('system_health_ok', locale) : t('system_health_missing', locale)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Coverage + RFQ + Vendor Stats */}
           <div className="grid grid-cols-1 gap-px border border-[var(--border)] bg-[var(--border)] lg:grid-cols-3">
