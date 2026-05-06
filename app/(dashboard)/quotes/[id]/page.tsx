@@ -127,7 +127,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
       )}
 
       {!quote.rfq_id && quote.status !== 'approved' && quote.status !== 'rejected' && (
-        <CreateRfqForm quoteId={quote.id} locale={locale} destinationRegion={quote.destination_region} />
+        <CreateRfqForm quoteId={quote.id} locale={locale} originRegion={quote.origin_region} />
       )}
 
       {isPending && (

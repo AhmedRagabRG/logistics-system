@@ -8,10 +8,10 @@ import { useCountries } from '@/hooks/use-countries';
 interface CreateRfqFormProps {
   quoteId: number;
   locale: string;
-  destinationRegion?: string | null;
+  originRegion?: string | null;
 }
 
-export default function CreateRfqForm({ quoteId, locale, destinationRegion }: CreateRfqFormProps) {
+export default function CreateRfqForm({ quoteId, locale, originRegion }: CreateRfqFormProps) {
   const _t = useDashboardT();
   const router = useRouter();
   const { countries, loading: countriesLoading } = useCountries(locale);
@@ -20,7 +20,7 @@ export default function CreateRfqForm({ quoteId, locale, destinationRegion }: Cr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-detect country from destination region when form opens
+  // Auto-detect country from origin region when form opens (vendors are at origin)
   const detectCountry = (region: string | null | undefined): string => {
     if (!region) return '';
     const r = region.toLowerCase();
@@ -64,7 +64,7 @@ export default function CreateRfqForm({ quoteId, locale, destinationRegion }: Cr
     return (
       <button
         onClick={() => {
-          const detected = detectCountry(destinationRegion);
+          const detected = detectCountry(originRegion);
           if (detected) setTargetCountry(detected);
           setShowForm(true);
         }}
@@ -83,14 +83,14 @@ export default function CreateRfqForm({ quoteId, locale, destinationRegion }: Cr
         </div>
         <p className="text-[10px] text-[var(--muted)]">
           {locale === 'tr'
-            ? 'Bu teklif için bir hedef ülke seçin ve tedarikçilere RFQ gönderin.'
-            : 'Select a target country for this quote and send an RFQ to vendors.'}
+            ? 'Tedarikçiler kargonun yüklendiği ülkede (çıkış) bulunur. Çıkış ülkesi seçin.'
+            : 'Vendors are located at the origin (where cargo is picked up). Select the origin country.'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">
-              {locale === 'tr' ? 'Hedef Ülke' : 'Target Country'}
+              {locale === 'tr' ? 'Çıkış Ülkesi' : 'Origin Country'}
             </label>
             <select
               value={targetCountry}
