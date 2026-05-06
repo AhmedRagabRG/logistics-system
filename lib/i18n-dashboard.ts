@@ -310,7 +310,17 @@ export type TranslationKey =
   | 'system_health_config'
   | 'system_health_warnings'
   | 'system_health_ok'
-  | 'system_health_missing';
+  | 'system_health_missing'
+  // Test messaging
+  | 'nav_test_messaging'
+  | 'test_messaging_title'
+  | 'test_messaging_channel'
+  | 'test_messaging_recipient'
+  | 'test_messaging_message'
+  | 'test_messaging_send'
+  | 'test_messaging_result'
+  | 'test_messaging_success'
+  | 'test_messaging_failed';
 
 const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
   tr: {
@@ -597,6 +607,15 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     system_health_warnings: 'Uyarılar',
     system_health_ok: 'Tamam',
     system_health_missing: 'Eksik',
+    nav_test_messaging: 'Mesaj Testi',
+    test_messaging_title: 'Kanal Mesaj Testi',
+    test_messaging_channel: 'Kanal',
+    test_messaging_recipient: 'Alıcı',
+    test_messaging_message: 'Mesaj',
+    test_messaging_send: 'Gönder',
+    test_messaging_result: 'Sonuç',
+    test_messaging_success: 'Başarılı',
+    test_messaging_failed: 'Başarısız',
   },
   en: {
     app_title: 'Dashboard',
@@ -882,6 +901,15 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     system_health_warnings: 'Warnings',
     system_health_ok: 'OK',
     system_health_missing: 'Missing',
+    nav_test_messaging: 'Test Messaging',
+    test_messaging_title: 'Channel Message Test',
+    test_messaging_channel: 'Channel',
+    test_messaging_recipient: 'Recipient',
+    test_messaging_message: 'Message',
+    test_messaging_send: 'Send',
+    test_messaging_result: 'Result',
+    test_messaging_success: 'Success',
+    test_messaging_failed: 'Failed',
   },
 };
 
