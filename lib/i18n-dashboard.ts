@@ -64,6 +64,9 @@ export type TranslationKey =
   | 'customer'
   | 'origin_region'
   | 'destination_region'
+  | 'origin_postal_code'
+  | 'destination_postal_code'
+  | 'currency'
   | 'weight'
   | 'base_price'
   | 'markup'
@@ -376,6 +379,9 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     customer: 'Müşteri',
     origin_region: 'Çıkış Bölgesi',
     destination_region: 'Varış Bölgesi',
+    origin_postal_code: 'Çıkış Posta Kodu',
+    destination_postal_code: 'Varış Posta Kodu',
+    currency: 'Para Birimi',
     weight: 'Ağırlık',
     base_price: 'Temel Fiyat',
     markup: 'Kar Marjı',
@@ -670,6 +676,9 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     customer: 'Customer',
     origin_region: 'Origin Region',
     destination_region: 'Destination Region',
+    origin_postal_code: 'Origin Postal Code',
+    destination_postal_code: 'Destination Postal Code',
+    currency: 'Currency',
     weight: 'Weight',
     base_price: 'Base Price',
     markup: 'Markup',

@@ -63,6 +63,13 @@ export async function PUT(
     if (data.handling_mode !== undefined) { fields.push('handling_mode = ?'); values.push(data.handling_mode); }
     if (data.rfq_id !== undefined) { fields.push('rfq_id = ?'); values.push(data.rfq_id); }
     if (data.review_reason !== undefined) { fields.push('review_reason = ?'); values.push(data.review_reason); }
+    if (data.origin_region !== undefined) { fields.push('origin_region = ?'); values.push(data.origin_region); }
+    if (data.destination_region !== undefined) { fields.push('destination_region = ?'); values.push(data.destination_region); }
+    if (data.origin_postal_code !== undefined) { fields.push('origin_postal_code = ?'); values.push(data.origin_postal_code); }
+    if (data.destination_postal_code !== undefined) { fields.push('destination_postal_code = ?'); values.push(data.destination_postal_code); }
+    if (data.weight_kg !== undefined) { fields.push('weight_kg = ?'); values.push(data.weight_kg); }
+    if (data.cargo_type !== undefined) { fields.push('cargo_type = ?'); values.push(data.cargo_type); }
+    if (data.response_text !== undefined) { fields.push('response_text = ?'); values.push(data.response_text); }
 
     if (fields.length === 0) {
       return NextResponse.json(

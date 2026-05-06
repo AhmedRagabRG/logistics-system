@@ -40,10 +40,17 @@ export const quoteUpdateSchema = z.object({
   markup_percent: z.number().min(0).max(1000).optional(),
   final_price: z.number().min(0).optional(),
   currency: z.string().length(3).optional(),
-  status: z.enum(['pending', 'approved', 'rejected', 'ready_to_send']).optional(),
+  status: z.enum(['pending', 'approved', 'rejected', 'ready_to_send', 'sent']).optional(),
   handling_mode: z.enum(['auto', 'manual', 'external']).optional(),
   rfq_id: z.number().int().positive().optional(),
   review_reason: z.string().max(500).optional(),
+  origin_region: z.string().max(64).optional(),
+  destination_region: z.string().max(64).optional(),
+  origin_postal_code: z.string().max(20).optional().nullable(),
+  destination_postal_code: z.string().max(20).optional().nullable(),
+  weight_kg: z.number().min(0).optional().nullable(),
+  cargo_type: z.string().max(64).optional().nullable(),
+  response_text: z.string().max(2000).optional().nullable(),
 });
 
 export const vendorSchema = z.object({
