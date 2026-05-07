@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS vendors (
     margin_rate DECIMAL(5,2) NOT NULL DEFAULT 0.00,
     contact_email VARCHAR(255),
     contact_phone VARCHAR(32),
+    telegram_chat_id VARCHAR(64),
     preferred_channels JSON,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

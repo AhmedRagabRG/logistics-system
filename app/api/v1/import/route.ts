@@ -69,10 +69,10 @@ export async function POST(request: NextRequest) {
         for (const row of rows) {
           try {
             await pool.execute<ResultSetHeader>(
-              `INSERT INTO vendors (name, country_coverage, expertise_notes, contact_email, contact_phone, use_custom_margin, margin_rate, is_active)
-               VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
-               ON DUPLICATE KEY UPDATE country_coverage = VALUES(country_coverage), expertise_notes = VALUES(expertise_notes), contact_email = VALUES(contact_email), contact_phone = VALUES(contact_phone), use_custom_margin = VALUES(use_custom_margin), margin_rate = VALUES(margin_rate)`,
-              [row.name, row.country_coverage, row.expertise_notes || null, row.contact_email || null, row.contact_phone || null, row.use_custom_margin ? 1 : 0, row.margin_rate]
+              `INSERT INTO vendors (name, country_coverage, expertise_notes, contact_email, contact_phone, telegram_chat_id, use_custom_margin, margin_rate, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+               ON DUPLICATE KEY UPDATE country_coverage = VALUES(country_coverage), expertise_notes = VALUES(expertise_notes), contact_email = VALUES(contact_email), contact_phone = VALUES(contact_phone), telegram_chat_id = VALUES(telegram_chat_id), use_custom_margin = VALUES(use_custom_margin), margin_rate = VALUES(margin_rate)`,
+              [row.name, row.country_coverage, row.expertise_notes || null, row.contact_email || null, row.contact_phone || null, row.telegram_chat_id || null, row.use_custom_margin ? 1 : 0, row.margin_rate]
             );
             inserted++;
           } catch {

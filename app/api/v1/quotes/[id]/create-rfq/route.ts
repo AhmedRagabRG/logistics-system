@@ -124,9 +124,14 @@ export async function POST(
           : ['email'];
 
       for (const contactChannel of channels) {
-        let contactId = contactChannel === 'whatsapp'
-          ? (vendor.contact_phone ?? '')
-          : (vendor.contact_email ?? '');
+        let contactId: string;
+        if (contactChannel === 'whatsapp') {
+          contactId = vendor.contact_phone ?? '';
+        } else if (contactChannel === 'telegram') {
+          contactId = vendor.telegram_chat_id ?? '';
+        } else {
+          contactId = vendor.contact_email ?? '';
+        }
 
         if (!contactId) continue;
 
@@ -170,7 +175,7 @@ export async function POST(
             cargo_type: quote.cargo_type,
             vendor_name: vendor.name,
             language,
-            channel: contactChannel as 'email' | 'whatsapp',
+            channel: contactChannel as 'email' | 'whatsapp' | 'telegram',
           });
           sentMessage = msg.message;
 

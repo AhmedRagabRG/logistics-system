@@ -124,6 +124,7 @@ export interface VendorRow {
   expertise_notes: string;
   contact_email: string;
   contact_phone: string;
+  telegram_chat_id: string;
   use_custom_margin: boolean;
   margin_rate: number;
 }
@@ -143,6 +144,7 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
       const origin = String(row['MENŞEİ'] || row['MENSEI'] || '').trim();
       const email = String(row['MAİL İHRACAT'] || row['MAIL İHRACAT'] || row['MAİL İTHALAT'] || row['email'] || '').trim();
       const phone = String(row['CEP'] || row['TEL'] || row['phone'] || '').trim();
+      const telegramChatId = String(row['TELEGRAM'] || row['TELEGRAM CHAT ID'] || row['telegram_chat_id'] || '').trim();
       const notes = String(row['NOT'] || row['not'] || '').trim();
       const useCustomMarginRaw = String(row['USE CUSTOM MARGIN'] || row['use_custom_margin'] || '').trim().toLowerCase();
       const marginRateRaw = String(row['MARGIN RATE (%)'] || row['margin_rate'] || '').trim();
@@ -159,6 +161,7 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
         expertise_notes: notes,
         contact_email: email,
         contact_phone: phone,
+        telegram_chat_id: telegramChatId,
         use_custom_margin: useCustomMargin,
         margin_rate: marginRate,
       });

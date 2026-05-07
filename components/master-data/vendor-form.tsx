@@ -17,6 +17,7 @@ interface VendorFormProps {
     margin_rate: number;
     contact_email: string | null;
     contact_phone: string | null;
+    telegram_chat_id: string | null;
     preferred_channels: string[] | null;
     is_active: boolean;
   };
@@ -38,6 +39,7 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
     margin_rate: initialData?.margin_rate ?? 0,
     contact_email: initialData?.contact_email ?? '',
     contact_phone: initialData?.contact_phone ?? '',
+    telegram_chat_id: initialData?.telegram_chat_id ?? '',
     preferred_channels:
       Array.isArray(initialData?.preferred_channels)
         ? initialData.preferred_channels
@@ -142,7 +144,7 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('vendor_email')}</label>
           <input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
@@ -150,6 +152,10 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('vendor_phone')}</label>
           <input type="tel" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('vendor_telegram')}</label>
+          <input type="text" value={form.telegram_chat_id} onChange={(e) => setForm({ ...form, telegram_chat_id: e.target.value })} placeholder="@username or chat ID" />
         </div>
       </div>
 
@@ -183,6 +189,20 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
               className="h-3.5 w-3.5 border-[var(--border-strong)]"
             />
             {_t('channel_whatsapp')}
+          </label>
+          <label className="flex items-center gap-2 text-xs text-[var(--foreground)]">
+            <input
+              type="checkbox"
+              checked={form.preferred_channels.includes('telegram')}
+              onChange={(e) => {
+                const channels = new Set(form.preferred_channels);
+                if (e.target.checked) channels.add('telegram');
+                else channels.delete('telegram');
+                setForm({ ...form, preferred_channels: Array.from(channels) });
+              }}
+              className="h-3.5 w-3.5 border-[var(--border-strong)]"
+            />
+            {_t('channel_telegram')}
           </label>
         </div>
       </div>

@@ -131,6 +131,7 @@ export type TranslationKey =
   | 'vendor_active'
   | 'vendor_email'
   | 'vendor_phone'
+  | 'vendor_telegram'
   | 'vendor_preferred_channels'
   | 'vendor_save'
   | 'vendor_update'
@@ -447,6 +448,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     vendor_active: 'Aktif',
     vendor_email: 'E-posta',
     vendor_phone: 'Telefon',
+    vendor_telegram: 'Telegram',
     vendor_preferred_channels: 'Tercih Edilen Kanallar',
     vendor_save: 'Ekle',
     vendor_update: 'Güncelle',
@@ -748,6 +750,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     vendor_active: 'Active',
     vendor_email: 'Email',
     vendor_phone: 'Phone',
+    vendor_telegram: 'Telegram',
     vendor_preferred_channels: 'Preferred Channels',
     vendor_save: 'Add',
     vendor_update: 'Update',

@@ -63,7 +63,8 @@ export const vendorSchema = z.object({
   margin_rate: z.coerce.number().min(0).max(100).default(0),
   contact_email: z.string().email().max(255).optional(),
   contact_phone: z.string().max(32).optional(),
-  preferred_channels: z.array(z.enum(['email', 'whatsapp'])).default([]),
+  telegram_chat_id: z.string().max(64).optional(),
+  preferred_channels: z.array(z.enum(['email', 'whatsapp', 'telegram'])).default([]),
   is_active: z.boolean().default(true),
 });
 
@@ -99,7 +100,7 @@ export const rfqCreateSchema = z.object({
   vendors: z.array(
     z.object({
       vendor_id: z.number().int().positive(),
-      contact_channel: z.enum(['email', 'whatsapp']),
+      contact_channel: z.enum(['email', 'whatsapp', 'telegram']),
       contact_id: z.string().min(1).max(64),
     })
   ).min(1),

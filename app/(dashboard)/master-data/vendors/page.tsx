@@ -19,6 +19,7 @@ interface Vendor {
   margin_rate: number;
   contact_email: string | null;
   contact_phone: string | null;
+  telegram_chat_id: string | null;
   preferred_channels: string[] | null;
   is_active: boolean;
 }
@@ -243,12 +244,13 @@ export default function VendorsPage() {
                     <td className="text-[var(--secondary)]">
                       {vendor.contact_email && <div className="font-mono text-xs">{vendor.contact_email}</div>}
                       {vendor.contact_phone && <div className="font-mono text-xs">{vendor.contact_phone}</div>}
+                      {vendor.telegram_chat_id && <div className="font-mono text-xs text-[var(--info)]">TG: {vendor.telegram_chat_id}</div>}
                     </td>
                     <td>
                       <div className="flex gap-1">
                         {vendor.preferred_channels?.map((ch) => (
                           <span key={ch} className="inline-block px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border border-[var(--border-strong)] bg-[var(--background)] text-[var(--secondary)]">
-                            {ch === 'email' ? _t('channel_email') : ch === 'whatsapp' ? _t('channel_whatsapp') : ch}
+                            {ch === 'email' ? _t('channel_email') : ch === 'whatsapp' ? _t('channel_whatsapp') : ch === 'telegram' ? _t('channel_telegram') : ch}
                           </span>
                         ))}
                       </div>

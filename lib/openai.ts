@@ -219,7 +219,7 @@ export interface VendorMessageInput {
   cargo_type: string | null;
   vendor_name: string;
   language: 'ar' | 'tr' | 'en';
-  channel: 'email' | 'whatsapp';
+  channel: 'email' | 'whatsapp' | 'telegram';
 }
 
 const VENDOR_MESSAGE_PROMPT = `You are a logistics procurement assistant. Generate a clear, professional message to send to a freight vendor requesting a price quote.

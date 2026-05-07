@@ -67,8 +67,8 @@ async function createVendor(body: unknown) {
   }
   const data = parse.data;
   const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO vendors (name, country_coverage, city, expertise_notes, priority_ranking, use_custom_margin, margin_rate, contact_email, contact_phone, preferred_channels, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO vendors (name, country_coverage, city, expertise_notes, priority_ranking, use_custom_margin, margin_rate, contact_email, contact_phone, telegram_chat_id, preferred_channels, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name,
       data.country_coverage,
@@ -79,6 +79,7 @@ async function createVendor(body: unknown) {
       data.margin_rate,
       data.contact_email ?? null,
       data.contact_phone ?? null,
+      data.telegram_chat_id ?? null,
       JSON.stringify(data.preferred_channels),
       data.is_active,
     ]
@@ -116,6 +117,7 @@ async function updateVendor(id: number, body: unknown) {
   if (data.margin_rate !== undefined) { fields.push('margin_rate = ?'); values.push(data.margin_rate); }
   if (data.contact_email !== undefined) { fields.push('contact_email = ?'); values.push(data.contact_email ?? null); }
   if (data.contact_phone !== undefined) { fields.push('contact_phone = ?'); values.push(data.contact_phone ?? null); }
+  if (data.telegram_chat_id !== undefined) { fields.push('telegram_chat_id = ?'); values.push(data.telegram_chat_id ?? null); }
   if (data.preferred_channels !== undefined) { fields.push('preferred_channels = ?'); values.push(JSON.stringify(data.preferred_channels)); }
   if (data.is_active !== undefined) { fields.push('is_active = ?'); values.push(data.is_active); }
 

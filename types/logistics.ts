@@ -56,9 +56,11 @@ export interface Vendor {
   country_coverage: string;
   expertise_notes: string | null;
   priority_ranking: number;
+  use_custom_margin: boolean;
   margin_rate: number;
   contact_email: string | null;
   contact_phone: string | null;
+  telegram_chat_id: string | null;
   preferred_channels: string[] | null;
   is_active: boolean;
   created_at: Date;
@@ -94,7 +96,7 @@ export interface RFQVendorAssignment {
   rfq_id: number;
   vendor_id: number;
   vendor_name?: string;
-  contact_channel: 'email' | 'whatsapp';
+  contact_channel: 'email' | 'whatsapp' | 'telegram';
   contact_id: string;
   response_price: number | null;
   response_currency: string | null;
