@@ -59,13 +59,13 @@ export const vendorSchema = z.object({
   city: z.string().max(128).optional(),
   expertise_notes: z.string().max(2000).optional(),
   priority_ranking: z.coerce.number().int().min(1).max(10000).default(100),
-  use_custom_margin: z.boolean().default(false),
+  use_custom_margin: z.coerce.boolean().default(false),
   margin_rate: z.coerce.number().min(0).max(100).default(0),
   contact_email: z.string().email().max(255).optional(),
   contact_phone: z.string().max(32).optional(),
   telegram_chat_id: z.string().max(64).optional(),
   preferred_channels: z.array(z.enum(['email', 'whatsapp', 'telegram'])).default([]),
-  is_active: z.boolean().default(true),
+  is_active: z.coerce.boolean().default(true),
 });
 
 export const routePricingSchema = z.object({
