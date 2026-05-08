@@ -11,6 +11,8 @@ interface Settings {
   exchange_rate_reference_date: string | null;
   waiting_period: string;
   global_markup_percent: number;
+  vendor_msg_email: string | null;
+  vendor_msg_telegram: string | null;
 }
 
 export default function SettingsPage() {

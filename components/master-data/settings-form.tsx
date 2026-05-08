@@ -10,6 +10,8 @@ interface SettingsFormProps {
     oversize_weight_threshold_tons: number;
     waiting_period?: string;
     global_markup_percent?: number;
+    vendor_msg_email?: string | null;
+    vendor_msg_telegram?: string | null;
   };
   onSuccess?: () => void;
 }
@@ -37,6 +39,8 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
     global_markup_percent: typeof initialData?.global_markup_percent === 'string'
       ? parseFloat(initialData.global_markup_percent) || 0
       : (initialData?.global_markup_percent ?? 0),
+    vendor_msg_email: initialData?.vendor_msg_email ?? '',
+    vendor_msg_telegram: initialData?.vendor_msg_telegram ?? '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +60,8 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
       global_markup_percent: typeof form.global_markup_percent === 'string'
         ? parseFloat(form.global_markup_percent) || 0
         : form.global_markup_percent,
+      vendor_msg_email: form.vendor_msg_email.trim() || null,
+      vendor_msg_telegram: form.vendor_msg_telegram.trim() || null,
     };
 
     try {
@@ -136,6 +142,36 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
           onChange={(e) => setForm({ ...form, global_markup_percent: parseFloat(e.target.value) || 0 })}
         />
         <p className="mt-1 text-[10px] text-[var(--muted)]">Applied to lowest vendor bid when auto-closing RFQs</p>
+      </div>
+
+      <div className="pt-2 border-t border-[var(--border)]">
+        <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-2">Vendor Message Templates</label>
+        <p className="mb-3 text-[10px] text-[var(--muted)]">
+          Leave blank to use OpenAI-generated messages. Available variables: {'{{vendor_name}}'}, {'{{rfq_reference}}'}, {'{{origin_region}}'}, {'{{destination_region}}'}, {'{{weight_kg}}'}, {'{{cargo_type}}'}, {'{{target_country}}'}
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">Email Template</label>
+            <textarea
+              rows={4}
+              value={form.vendor_msg_email}
+              onChange={(e) => setForm({ ...form, vendor_msg_email: e.target.value })}
+              placeholder="Hi {{vendor_name}}, we have a shipment from {{origin_region}} to {{destination_region}} ({{weight_kg}}kg). Please quote RFQ {{rfq_reference}}."
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">Telegram Template</label>
+            <textarea
+              rows={4}
+              value={form.vendor_msg_telegram}
+              onChange={(e) => setForm({ ...form, vendor_msg_telegram: e.target.value })}
+              placeholder="Quote request {{rfq_reference}}: {{origin_region}} → {{destination_region}}, {{weight_kg}}kg. Reply with price in TRY."
+              className="w-full"
+            />
+          </div>
+        </div>
       </div>
 
       <button type="submit" disabled={loading} className="btn btn-primary text-xs">

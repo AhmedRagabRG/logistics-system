@@ -87,6 +87,9 @@ export const systemSettingsSchema = z.object({
   oversize_weight_threshold_tons: z.number().positive().default(22.00),
   waiting_period: z.string().regex(/^\d+[mhd]$/, 'Must be a number followed by m, h, or d (e.g. 30m, 2h, 1d)').default('30m'),
   global_markup_percent: z.number().min(0).max(1000).default(0),
+  vendor_msg_email: z.string().max(5000).optional().nullable(),
+  vendor_msg_telegram: z.string().max(5000).optional().nullable(),
+  vendor_msg_whatsapp: z.string().max(5000).optional().nullable(),
 });
 
 export const exchangeRateSchema = z.object({

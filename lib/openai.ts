@@ -241,6 +241,22 @@ Rules:
 export async function generateVendorMessage(
   input: VendorMessageInput
 ): Promise<{ subject: string; message: string }> {
+  // 1. Try custom template first
+  const { renderVendorMessage } = await import('./vendor-messages');
+  const custom = await renderVendorMessage(input.channel, {
+    vendor_name: input.vendor_name,
+    rfq_reference: input.rfq_reference,
+    origin_region: input.origin_region,
+    destination_region: input.destination_region,
+    weight_kg: input.weight_kg,
+    cargo_type: input.cargo_type,
+    target_country: input.target_country,
+  });
+  if (custom) {
+    return custom;
+  }
+
+  // 2. Fallback to OpenAI
   if (!process.env.OPENAI_API_KEY) {
     const msg = `[${input.rfq_reference}] Quote request: ${input.origin_region} → ${input.destination_region}, ${input.weight_kg}kg${input.cargo_type ? `, ${input.cargo_type}` : ''}. Please reply with price in TRY and include reference ${input.rfq_reference}.`;
     return { subject: `Quote Request ${input.rfq_reference}`, message: msg };
