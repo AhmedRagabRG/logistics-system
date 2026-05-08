@@ -73,7 +73,15 @@ export async function POST(
     }
 
     const assignment = assignmentRows[0];
-    if (assignment.status !== 'responded' || !assignment.response_price) {
+    if (assignment.status !== 'responded') {
+      console.log(`[GENERATE-QUOTE] RFQ ${rfqId} vendor ${selected_vendor_id} status is '${assignment.status}', expected 'responded'`);
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_STATE', message: 'Selected vendor has not responded yet' } },
+        { status: 409 }
+      );
+    }
+    if (!assignment.response_price) {
+      console.log(`[GENERATE-QUOTE] RFQ ${rfqId} vendor ${selected_vendor_id} has no response_price (value: ${assignment.response_price})`);
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_STATE', message: 'Selected vendor has not responded yet' } },
         { status: 409 }

@@ -838,30 +838,45 @@ export async function processExpiredRFQs(): Promise<{
   return { processed: results.length, results };
 }
 
-function inferContactChannel(contactId: string): 'whatsapp' | 'email' | 'telegram' {
+async function inferContactChannel(contactId: string): Promise<'whatsapp' | 'email' | 'telegram'> {
   if (contactId.includes('@')) return 'email';
+  // Check if this is a known Telegram chat ID
+  const [telegramRows] = await pool.execute<
+    Array<RowDataPacket & { id: number }>
+  >(
+    'SELECT id FROM vendors WHERE telegram_chat_id = ? AND is_active = 1 LIMIT 1',
+    [contactId]
+  );
+  if (telegramRows && telegramRows.length > 0) return 'telegram';
+  // Default to whatsapp for numeric-looking IDs
   if (/^\d+$/.test(contactId.replace(/\D/g, ''))) return 'whatsapp';
   return 'telegram';
 }
 
 export async function processVendorReply(
   contactId: string,
-  replyText: string
+  replyText: string,
+  knownChannel?: string
 ): Promise<{ success: boolean; message: string; matched?: boolean }> {
   // Step 1: Try to parse RFQ reference from reply
   const parsedReply = await import('./openai').then((m) => m.parseVendorReply(replyText));
 
-  // Detect channel from contact ID format
-  const inferredChannel = inferContactChannel(contactId);
-  console.log(`[VENDOR-REPLY] Inferred channel: ${inferredChannel} from contact: ${contactId}`);
+  // Detect channel from contact ID format (or use known channel from webhook)
+  const inferredChannel = knownChannel
+    ? (knownChannel as 'whatsapp' | 'email' | 'telegram')
+    : await inferContactChannel(contactId);
+  console.log(`[VENDOR-REPLY] Channel: ${inferredChannel} from contact: ${contactId}`);
 
   // Build contact variants based on channel type
   let uniqueContacts: string[];
   if (inferredChannel === 'email') {
     // Email: try exact match and lowercase variant
     uniqueContacts = Array.from(new Set([contactId, contactId.toLowerCase(), contactId.trim()]));
+  } else if (inferredChannel === 'telegram') {
+    // Telegram: chat IDs are stored as-is (numeric strings)
+    uniqueContacts = Array.from(new Set([contactId, contactId.replace(/\D/g, '')]));
   } else {
-    // WhatsApp/Telegram: normalize phone number variants
+    // WhatsApp: normalize phone number variants
     const normalizedContact = normalizeContactId(contactId, 'whatsapp');
     const digitsOnly = contactId.replace(/\D/g, '');
     uniqueContacts = Array.from(new Set([contactId, normalizedContact, digitsOnly, `+${digitsOnly}`, `whatsapp:+${digitsOnly}`].filter(Boolean)));
@@ -908,9 +923,25 @@ export async function processVendorReply(
     }
   }
 
-  // Step 3: If no match by reference, look up latest open RFQ for this contact within 4 hours
+  // Step 3: If no match by reference, look up latest open RFQ for this contact
+  // Use system waiting period + buffer, or default to 7 days
   if (!assignment) {
     console.log(`[VENDOR-REPLY] No match by reference, trying contact-only lookup...`);
+    const [settingsRows] = await pool.execute<
+      Array<RowDataPacket & { waiting_period: string }>
+    >('SELECT waiting_period FROM system_settings ORDER BY id DESC LIMIT 1');
+    const waitingPeriod = settingsRows?.[0]?.waiting_period ?? '30m';
+    const match = waitingPeriod.match(/^(\d+)([mhd])$/);
+    let hoursBuffer = 24 * 7; // default 7 days
+    if (match) {
+      const value = parseInt(match[1], 10);
+      const unit = match[2];
+      if (unit === 'm') hoursBuffer = Math.max(value / 60, 1);
+      else if (unit === 'h') hoursBuffer = value;
+      else if (unit === 'd') hoursBuffer = value * 24;
+    }
+    hoursBuffer = Math.max(hoursBuffer, 24); // minimum 24 hours
+
     const placeholders = uniqueContacts.map(() => '?').join(',');
     const [assignmentRows] = await pool.execute<
       Array<RowDataPacket & { id: number; rfq_id: number; vendor_id: number }>
@@ -920,7 +951,7 @@ export async function processVendorReply(
        JOIN rfq_records r ON r.id = a.rfq_id
        WHERE a.contact_id IN (${placeholders})
          AND r.status IN ('open', 'responded')
-         AND a.created_at >= DATE_SUB(NOW(), INTERVAL 4 HOUR)
+         AND a.created_at >= DATE_SUB(NOW(), INTERVAL ${hoursBuffer} HOUR)
        ORDER BY a.created_at DESC`,
       uniqueContacts
     );
@@ -928,7 +959,7 @@ export async function processVendorReply(
     if (assignmentRows && assignmentRows.length === 1) {
       // Exactly one match — use it
       assignment = assignmentRows[0];
-    } else     if (assignmentRows && assignmentRows.length > 1) {
+    } else if (assignmentRows && assignmentRows.length > 1) {
       // Multiple open RFQs — ambiguous, store as unmatched
       await storeUnmatchedReply(contactId, inferredChannel, replyText, parsedReply.price, parsedReply.currency, 'Multiple open RFQs found for this contact');
       return { success: false, message: 'Multiple open RFQs found for this contact. Stored for manual review.', matched: false };

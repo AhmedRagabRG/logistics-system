@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
 
     const contactId = body.contact_id || body.From || body.from || body.sender || '';
     const replyText = body.reply_text || body.Body || body.text || body.message || '';
+    const knownChannel = body.channel || undefined;
 
     if (!contactId || !replyText) {
       return NextResponse.json(
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await processVendorReply(String(contactId), String(replyText));
+    const result = await processVendorReply(String(contactId), String(replyText), knownChannel);
 
     return NextResponse.json(result);
   } catch (error) {
