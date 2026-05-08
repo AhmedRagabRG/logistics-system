@@ -71,12 +71,12 @@ export const vendorSchema = z.object({
 export const routePricingSchema = z.object({
   origin_region: z.string().min(1).max(64),
   destination_region: z.string().min(1).max(64),
-  base_price: z.number().positive(),
-  markup_percent: z.number().min(0).max(1000),
+  base_price: z.coerce.number().positive(),
+  markup_percent: z.coerce.number().min(0).max(1000),
   currency: z.string().length(3).default('TRY'),
   is_sea_active: z.coerce.boolean().default(false),
-  sea_base_price: z.number().min(0).default(0),
-  sea_markup_percent: z.number().min(0).max(1000).default(0),
+  sea_base_price: z.coerce.number().min(0).default(0),
+  sea_markup_percent: z.coerce.number().min(0).max(1000).default(0),
   sea_currency: z.string().length(3).default('TRY'),
   is_active: z.coerce.boolean().default(true),
 });
