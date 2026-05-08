@@ -36,42 +36,52 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
 
   const transportMode = input.transportMode ?? 'road';
 
-  // 1. Try exact match first (case-insensitive) with transport mode
+  // 1. Try exact match first (case-insensitive)
   const [exactRows] = await pool.execute<
     Array<
       RowDataPacket & {
+        is_sea_active: number;
         base_price: number;
         markup_percent: number;
         currency: string;
+        sea_base_price: number;
+        sea_markup_percent: number;
+        sea_currency: string;
       }
     >
   >(
-    `SELECT base_price, markup_percent, currency
+    `SELECT is_sea_active, base_price, markup_percent, currency,
+            sea_base_price, sea_markup_percent, sea_currency
      FROM route_pricing
-     WHERE LOWER(origin_region) = LOWER(?) AND LOWER(destination_region) = LOWER(?) AND transport_mode = ? AND is_active = TRUE
+     WHERE LOWER(origin_region) = LOWER(?) AND LOWER(destination_region) = LOWER(?) AND is_active = TRUE
      LIMIT 1`,
-    [input.originRegion, input.destinationRegion, transportMode]
+    [input.originRegion, input.destinationRegion]
   );
 
   let rows = exactRows;
 
   // 2. If exact match fails, try flexible match (bidirectional containment)
-  //    This handles: "Berlin" matching "Berlin, Almanya" and vice versa
   if (!rows || rows.length === 0) {
     console.log(`[PRICING] Exact match failed for "${input.originRegion}" -> "${input.destinationRegion}". Trying flexible match...`);
 
     const [flexRows] = await pool.execute<
       Array<
         RowDataPacket & {
+          is_sea_active: number;
           base_price: number;
           markup_percent: number;
           currency: string;
+          sea_base_price: number;
+          sea_markup_percent: number;
+          sea_currency: string;
           origin_region: string;
           destination_region: string;
         }
       >
     >(
-      `SELECT base_price, markup_percent, currency, origin_region, destination_region
+      `SELECT is_sea_active, base_price, markup_percent, currency,
+              sea_base_price, sea_markup_percent, sea_currency,
+              origin_region, destination_region
        FROM route_pricing
        WHERE (
          LOWER(origin_region) = LOWER(?)
@@ -83,13 +93,11 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
          OR LOWER(destination_region) LIKE LOWER(CONCAT('%', ?, '%'))
          OR LOWER(?) LIKE LOWER(CONCAT('%', destination_region, '%'))
        )
-       AND transport_mode = ?
        AND is_active = TRUE
        LIMIT 1`,
       [
         input.originRegion, input.originRegion, input.originRegion,
         input.destinationRegion, input.destinationRegion, input.destinationRegion,
-        transportMode,
       ]
     );
     rows = flexRows;
@@ -106,17 +114,25 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
   }
 
   const route = rows[0];
+
+  // Use sea price if explicitly requested AND sea is active AND sea price > 0
+  const useSea = transportMode === 'sea' && route.is_sea_active && route.sea_base_price > 0;
+
+  const basePrice = useSea ? route.sea_base_price : route.base_price;
+  const markupPercent = useSea ? route.sea_markup_percent : route.markup_percent;
+  const currency = useSea ? route.sea_currency : route.currency;
+
   const marginRate = input.marginRate ?? 0;
-  const markupMultiplier = 1 + route.markup_percent / 100;
+  const markupMultiplier = 1 + markupPercent / 100;
   const marginMultiplier = 1 + marginRate / 100;
-  const finalPrice = route.base_price * markupMultiplier * marginMultiplier;
+  const finalPrice = basePrice * markupMultiplier * marginMultiplier;
 
   return {
-    basePrice: route.base_price,
-    markupPercent: route.markup_percent,
+    basePrice,
+    markupPercent,
     marginRate,
     finalPrice,
-    currency: route.currency,
+    currency,
     found: true,
   };
 }

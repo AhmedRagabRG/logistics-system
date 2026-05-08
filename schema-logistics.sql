@@ -55,13 +55,16 @@ CREATE TABLE IF NOT EXISTS route_pricing (
     base_price DECIMAL(12,2) NOT NULL,
     markup_percent DECIMAL(5,2) NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
-    transport_mode ENUM('road', 'sea') NOT NULL DEFAULT 'road',
+    is_sea_active BOOLEAN NOT NULL DEFAULT FALSE,
+    sea_base_price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    sea_markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    sea_currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_route_mode (origin_region, destination_region, transport_mode),
+    UNIQUE KEY uk_route (origin_region, destination_region),
     INDEX idx_active (is_active),
-    INDEX idx_transport_mode (transport_mode)
+    INDEX idx_sea_active (is_sea_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Vendors

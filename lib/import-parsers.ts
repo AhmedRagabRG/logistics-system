@@ -62,7 +62,10 @@ export interface RoutePricingRow {
   base_price: number;
   markup_percent: number;
   currency: string;
-  transport_mode: 'road' | 'sea';
+  is_sea_active: boolean;
+  sea_base_price: number;
+  sea_markup_percent: number;
+  sea_currency: string;
 }
 
 export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
@@ -80,35 +83,44 @@ export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
 
     const origin = String(row[1] || '').trim();
     const destination = String(row[2] || '').trim();
-    const transportModeRaw = String(row[3] || '').trim().toLowerCase();
-    const transport_mode: 'road' | 'sea' = transportModeRaw === 'sea' || transportModeRaw === 'deniz' ? 'sea' : 'road';
-    const priceExport = parseFloat(String(row[4] || '').replace(/,/g, ''));
-    const currency = String(row[5] || 'EUR').trim().toUpperCase();
-    const priceImport = parseFloat(String(row[6] || '').replace(/,/g, ''));
+    const isSeaActiveRaw = String(row[3] || '').trim().toLowerCase();
+    const is_sea_active = isSeaActiveRaw === 'yes' || isSeaActiveRaw === 'true' || isSeaActiveRaw === '1' || isSeaActiveRaw === 'evet';
+    const roadPrice = parseFloat(String(row[4] || '').replace(/,/g, ''));
+    const roadCurrency = String(row[5] || 'EUR').trim().toUpperCase();
+    const seaPrice = parseFloat(String(row[6] || '').replace(/,/g, ''));
+    const seaCurrency = String(row[7] || roadCurrency).trim().toUpperCase();
+    const reverseRoadPrice = parseFloat(String(row[8] || '').replace(/,/g, ''));
+    const reverseSeaPrice = parseFloat(String(row[9] || '').replace(/,/g, ''));
 
-    if (!origin || !destination || (isNaN(priceExport) && isNaN(priceImport))) continue;
+    if (!origin || !destination || (isNaN(roadPrice) && isNaN(reverseRoadPrice))) continue;
 
-    // Add export route
-    if (!isNaN(priceExport) && priceExport > 0) {
+    // Add forward route (origin -> destination)
+    if (!isNaN(roadPrice) && roadPrice > 0) {
       rows.push({
         origin_region: origin,
         destination_region: destination,
-        base_price: priceExport,
+        base_price: roadPrice,
         markup_percent: 0,
-        currency,
-        transport_mode,
+        currency: roadCurrency,
+        is_sea_active,
+        sea_base_price: !isNaN(seaPrice) && seaPrice > 0 ? seaPrice : 0,
+        sea_markup_percent: 0,
+        sea_currency: seaCurrency,
       });
     }
 
-    // Add import route (reverse direction)
-    if (!isNaN(priceImport) && priceImport > 0) {
+    // Add reverse route (destination -> origin)
+    if (!isNaN(reverseRoadPrice) && reverseRoadPrice > 0) {
       rows.push({
         origin_region: destination,
         destination_region: origin,
-        base_price: priceImport,
+        base_price: reverseRoadPrice,
         markup_percent: 0,
-        currency,
-        transport_mode,
+        currency: roadCurrency,
+        is_sea_active,
+        sea_base_price: !isNaN(reverseSeaPrice) && reverseSeaPrice > 0 ? reverseSeaPrice : 0,
+        sea_markup_percent: 0,
+        sea_currency: seaCurrency,
       });
     }
   }

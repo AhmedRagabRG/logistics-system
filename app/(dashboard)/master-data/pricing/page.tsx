@@ -15,7 +15,10 @@ interface Pricing {
   base_price: number;
   markup_percent: number;
   currency: string;
-  transport_mode: 'road' | 'sea';
+  is_sea_active: boolean;
+  sea_base_price: number;
+  sea_markup_percent: number;
+  sea_currency: string;
   is_active: boolean;
 }
 
@@ -32,7 +35,7 @@ export default function PricingPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
-  const [transportModeFilter, setTransportModeFilter] = useState<'all' | 'road' | 'sea'>('all');
+  const [seaFilter, setSeaFilter] = useState<'all' | 'with_sea' | 'road_only'>('all');
 
   const fetchPricing = useCallback(async () => {
     setLoading(true);
@@ -79,11 +82,13 @@ export default function PricingPage() {
     if (currencyFilter !== 'all') {
       result = result.filter((p) => p.currency === currencyFilter);
     }
-    if (transportModeFilter !== 'all') {
-      result = result.filter((p) => p.transport_mode === transportModeFilter);
+    if (seaFilter === 'with_sea') {
+      result = result.filter((p) => p.is_sea_active);
+    } else if (seaFilter === 'road_only') {
+      result = result.filter((p) => !p.is_sea_active);
     }
     return result;
-  }, [pricing, search, statusFilter, currencyFilter, transportModeFilter]);
+  }, [pricing, search, statusFilter, currencyFilter, seaFilter]);
 
   const { selectedIds, toggle, toggleAll, clear, isSelected, allSelected, someSelected } = useBulkSelection<number>(filteredPricing.map((p) => p.id));
 
@@ -97,7 +102,7 @@ export default function PricingPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
     clear();
-  }, [search, statusFilter, currencyFilter, transportModeFilter, clear]);
+  }, [search, statusFilter, currencyFilter, seaFilter, clear]);
 
   async function handleDelete(id: number) {
     if (!confirm(_t('vendor_delete_confirm'))) return;
@@ -192,10 +197,10 @@ export default function PricingPage() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-            <select value={transportModeFilter} onChange={(e) => setTransportModeFilter(e.target.value as 'all' | 'road' | 'sea')}>
-              <option value="all">{_t('filter_transport_mode')}</option>
-              <option value="road">{_t('road_transport')}</option>
-              <option value="sea">{_t('sea_transport')}</option>
+            <select value={seaFilter} onChange={(e) => setSeaFilter(e.target.value as 'all' | 'with_sea' | 'road_only')}>
+              <option value="all">{_t('all_status')}</option>
+              <option value="with_sea">{_t('sea_transport')}</option>
+              <option value="road_only">{_t('road_transport')}</option>
             </select>
             {selectedIds.length > 0 && (
               <button onClick={handleBulkDelete} className="btn btn-danger text-xs">
@@ -227,7 +232,7 @@ export default function PricingPage() {
                   <th>{_t('label_destination')}</th>
                   <th className="text-right">{_t('label_price')}</th>
                   <th>{_t('label_currency')}</th>
-                  <th>{_t('transport_mode')}</th>
+                  <th className="text-right">{_t('sea_transport')}</th>
                   <th>{_t('label_status')}</th>
                   <th className="text-right">{_t('actions')}</th>
                 </tr>
@@ -247,10 +252,14 @@ export default function PricingPage() {
                     <td>{p.destination_region}</td>
                     <td className="text-right font-mono">{p.base_price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                     <td className="font-mono text-xs">{p.currency}</td>
-                    <td>
-                      <span className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.transport_mode === 'sea' ? 'border-[var(--info)] text-[var(--info)]' : 'border-[var(--success)] text-[var(--success)]'}`}>
-                        {p.transport_mode === 'sea' ? _t('sea_transport') : _t('road_transport')}
-                      </span>
+                    <td className="text-right">
+                      {p.is_sea_active ? (
+                        <span className="inline-block border border-[var(--info)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--info)]">
+                          {p.sea_base_price.toLocaleString('en-US', { minimumFractionDigits: 2 })} {p.sea_currency}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-[var(--muted)]">—</span>
+                      )}
                     </td>
                     <td>
                       <span className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.is_active ? 'border-[var(--success)] text-[var(--success)]' : 'border-[var(--muted)] text-[var(--muted)]'}`}>

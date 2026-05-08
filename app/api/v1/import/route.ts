@@ -51,10 +51,20 @@ export async function POST(request: NextRequest) {
         for (const row of rows) {
           try {
             await pool.execute<ResultSetHeader>(
-              `INSERT INTO route_pricing (origin_region, destination_region, base_price, markup_percent, currency, transport_mode, is_active)
-               VALUES (?, ?, ?, ?, ?, ?, TRUE)
-               ON DUPLICATE KEY UPDATE base_price = VALUES(base_price), markup_percent = VALUES(markup_percent), currency = VALUES(currency), transport_mode = VALUES(transport_mode)`,
-              [row.origin_region, row.destination_region, row.base_price, row.markup_percent, row.currency, row.transport_mode]
+              `INSERT INTO route_pricing (origin_region, destination_region, base_price, markup_percent, currency, is_sea_active, sea_base_price, sea_markup_percent, sea_currency, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+               ON DUPLICATE KEY UPDATE base_price = VALUES(base_price), markup_percent = VALUES(markup_percent), currency = VALUES(currency), is_sea_active = VALUES(is_sea_active), sea_base_price = VALUES(sea_base_price), sea_markup_percent = VALUES(sea_markup_percent), sea_currency = VALUES(sea_currency)`,
+              [
+                row.origin_region,
+                row.destination_region,
+                row.base_price,
+                row.markup_percent,
+                row.currency,
+                row.is_sea_active,
+                row.sea_base_price,
+                row.sea_markup_percent,
+                row.sea_currency,
+              ]
             );
             inserted++;
           } catch {
