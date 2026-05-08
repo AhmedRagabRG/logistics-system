@@ -11,6 +11,7 @@ interface QuoteCardProps {
     status: string;
     transport_mode?: string;
     is_oversize: boolean;
+    is_dual_mode?: boolean;
     rfq_id: number | null;
     review_reason: string | null;
     created_at: string;
@@ -74,6 +75,11 @@ export default function QuoteCard({ quote, locale = 'tr' }: QuoteCardProps) {
           {quote.transport_mode === 'sea' && (
             <span className="px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider border border-[var(--info)]/25 text-[var(--info)] bg-[var(--info)]/8">
               Sea
+            </span>
+          )}
+          {quote.is_dual_mode && (
+            <span className="px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider border border-[var(--accent)]/25 text-[var(--accent)] bg-[var(--accent)]/8">
+              Dual
             </span>
           )}
         </div>

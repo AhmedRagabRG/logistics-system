@@ -146,6 +146,9 @@ export interface CustomerResponseInput {
   destination_region: string;
   final_price: number;
   currency: string;
+  sea_final_price?: number;
+  sea_currency?: string;
+  is_dual_mode?: boolean;
   language: 'ar' | 'tr' | 'en';
   status: 'ready_to_send' | 'pending' | 'data_request' | 'approved' | 'rejected';
   review_reason?: string | null;
@@ -161,6 +164,7 @@ Return ONLY a JSON object with:
 
 Rules:
 - If status is "ready_to_send": Provide the quote with price, origin, destination. Be professional and invite them to confirm.
+  - If is_dual_mode is true: Present BOTH road and sea prices clearly. Example: "Road: 5000 TRY | Sea: 4200 TRY". Mention that sea is typically slower but more cost-effective for heavy loads.
 - If status is "approved": Confirm that the quote has been approved. Include the final price, origin, destination, and next steps.
 - If status is "rejected": Politely inform them that we cannot provide a quote at this time. Include the reason if provided.
 - If status is "pending": Explain that the request is being reviewed and they will receive a response soon.
@@ -188,6 +192,9 @@ export async function generateCustomerResponse(
           destination_region: input.destination_region,
           final_price: input.final_price,
           currency: input.currency,
+          sea_final_price: input.sea_final_price,
+          sea_currency: input.sea_currency,
+          is_dual_mode: input.is_dual_mode ?? false,
           language: input.language,
           status: input.status,
           review_reason: input.review_reason,

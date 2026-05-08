@@ -102,11 +102,14 @@ export async function POST(
         destination_region: string;
         language: string;
         is_oversize: boolean;
+        is_dual_mode: boolean;
+        sea_final_price: number;
+        sea_currency: string;
         customer_contact: string | null;
         channel: string;
       }>
     >(
-      `SELECT q.origin_region, q.destination_region, s.language, q.is_oversize, s.customer_contact, s.channel
+      `SELECT q.origin_region, q.destination_region, s.language, q.is_oversize, q.is_dual_mode, q.sea_final_price, q.sea_currency, s.customer_contact, s.channel
        FROM quotes q
        JOIN shipment_requests s ON s.id = q.shipment_request_id
        WHERE q.id = ?`,
@@ -124,6 +127,9 @@ export async function POST(
           destination_region: details.destination_region,
           final_price: finalPrice,
           currency: winningCurrency,
+          sea_final_price: details.is_dual_mode ? details.sea_final_price : undefined,
+          sea_currency: details.is_dual_mode ? details.sea_currency : undefined,
+          is_dual_mode: details.is_dual_mode,
           language: (details.language as 'ar' | 'tr' | 'en') ?? 'en',
           status: 'approved',
           review_reason: notes ?? null,

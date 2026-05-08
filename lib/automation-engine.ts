@@ -33,6 +33,10 @@ export interface ProcessRequestResult {
   markup_percent: number | null;
   final_price: number | null;
   currency: string;
+  sea_base_price: number | null;
+  sea_final_price: number | null;
+  sea_currency: string | null;
+  is_dual_mode: boolean;
   is_oversize: boolean;
   review_reason: string | null;
   rfq_id?: number | null;
@@ -245,9 +249,9 @@ async function createQuoteForRoute({
   // Ignore OpenAI's missing_fields — it doesn't know what the webhook already provided
   if (actuallyMissing.length > 0) {
     const [quoteResult] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, status, handling_mode, transport_mode, toggle_state_at_creation, is_oversize, review_reason)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [shipmentRequestId, originRegionValue, destinationRegionValue, originPostalCode, destinationPostalCode, weightKg, cargoType, 0, 0, 0, 'TRY', 'pending', handlingMode, parsed.transport_mode ?? 'road', toggle, false, `Missing fields: ${actuallyMissing.join(', ')}`]
+      `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, sea_base_price, sea_markup_percent, sea_final_price, sea_currency, is_dual_mode, status, handling_mode, transport_mode, toggle_state_at_creation, is_oversize, review_reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [shipmentRequestId, originRegionValue, destinationRegionValue, originPostalCode, destinationPostalCode, weightKg, cargoType, 0, 0, 0, 'TRY', 0, 0, 0, 'TRY', false, 'pending', handlingMode, parsed.transport_mode ?? 'road', toggle, false, `Missing fields: ${actuallyMissing.join(', ')}`]
     );
 
     const quoteId = quoteResult.insertId;
@@ -262,6 +266,10 @@ async function createQuoteForRoute({
       markup_percent: null,
       final_price: null,
       currency: 'TRY',
+      sea_base_price: null,
+      sea_final_price: null,
+      sea_currency: null,
+      is_dual_mode: false,
       is_oversize: false,
       review_reason: `Missing fields: ${actuallyMissing.join(', ')}`,
       message: '',
@@ -281,7 +289,12 @@ async function createQuoteForRoute({
     finalPrice: number;
     currency: string;
     found: boolean;
-  } = { basePrice: 0, markupPercent: 0, finalPrice: 0, currency: 'TRY', found: false };
+    seaBasePrice: number | null;
+    seaMarkupPercent: number | null;
+    seaFinalPrice: number | null;
+    seaCurrency: string | null;
+    hasBothModes: boolean;
+  } = { basePrice: 0, markupPercent: 0, finalPrice: 0, currency: 'TRY', found: false, seaBasePrice: null, seaMarkupPercent: null, seaFinalPrice: null, seaCurrency: null, hasBothModes: false };
 
   if (originRegionValue !== 'UNKNOWN' && destinationRegionValue !== 'UNKNOWN') {
     pricingResult = await calculatePricing({
@@ -319,8 +332,8 @@ async function createQuoteForRoute({
 
   // Insert quote
   const [quoteResult] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, status, handling_mode, transport_mode, toggle_state_at_creation, is_oversize, review_reason)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO quotes (shipment_request_id, origin_region, destination_region, origin_postal_code, destination_postal_code, weight_kg, cargo_type, base_price, markup_percent, final_price, currency, sea_base_price, sea_markup_percent, sea_final_price, sea_currency, is_dual_mode, status, handling_mode, transport_mode, toggle_state_at_creation, is_oversize, review_reason)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       shipmentRequestId,
       originRegionValue,
@@ -333,6 +346,11 @@ async function createQuoteForRoute({
       pricingResult.markupPercent,
       pricingResult.finalPrice,
       pricingResult.currency,
+      pricingResult.seaBasePrice ?? 0,
+      pricingResult.seaMarkupPercent ?? 0,
+      pricingResult.seaFinalPrice ?? 0,
+      pricingResult.seaCurrency ?? 'TRY',
+      pricingResult.hasBothModes,
       quoteStatus,
       handlingMode,
       parsed.transport_mode ?? 'road',
@@ -533,6 +551,9 @@ async function createQuoteForRoute({
       destination_region: String(destinationRegionValue),
       final_price: pricingResult.finalPrice,
       currency: pricingResult.currency,
+      sea_final_price: pricingResult.seaFinalPrice ?? undefined,
+      sea_currency: pricingResult.seaCurrency ?? undefined,
+      is_dual_mode: pricingResult.hasBothModes,
       language,
       status: 'ready_to_send',
       review_reason: reviewReason,
@@ -600,6 +621,10 @@ async function createQuoteForRoute({
     markup_percent: pricingResult.found ? pricingResult.markupPercent : null,
     final_price: pricingResult.found ? pricingResult.finalPrice : null,
     currency: pricingResult.currency,
+    sea_base_price: pricingResult.found ? pricingResult.seaBasePrice : null,
+    sea_final_price: pricingResult.found ? pricingResult.seaFinalPrice : null,
+    sea_currency: pricingResult.seaCurrency ?? null,
+    is_dual_mode: pricingResult.hasBothModes,
     is_oversize: oversize,
     review_reason: reviewReason,
     rfq_id: rfqId,
@@ -712,9 +737,9 @@ export async function processExpiredRFQs(): Promise<{
     // In manual mode, admin must review and approve/reject first.
     if (!isManualMode) {
       const [customerRows] = await pool.execute<
-        Array<RowDataPacket & { customer_contact: string | null; channel: string; language: string; origin_region: string; destination_region: string }>
+        Array<RowDataPacket & { customer_contact: string | null; channel: string; language: string; origin_region: string; destination_region: string; is_dual_mode: boolean; sea_final_price: number; sea_currency: string }>
       >(
-        `SELECT s.customer_contact, s.channel, s.language, q.origin_region, q.destination_region
+        `SELECT s.customer_contact, s.channel, s.language, q.origin_region, q.destination_region, q.is_dual_mode, q.sea_final_price, q.sea_currency
          FROM quotes q
          JOIN shipment_requests s ON s.id = q.shipment_request_id
          WHERE q.id = ?`,
@@ -729,6 +754,9 @@ export async function processExpiredRFQs(): Promise<{
           destination_region: customer.destination_region,
           final_price: finalPrice,
           currency: lowestCurrency,
+          sea_final_price: customer.is_dual_mode ? customer.sea_final_price : undefined,
+          sea_currency: customer.is_dual_mode ? customer.sea_currency : undefined,
+          is_dual_mode: customer.is_dual_mode,
           language: (customer.language as 'ar' | 'tr' | 'en') ?? 'en',
           status: 'ready_to_send',
         });

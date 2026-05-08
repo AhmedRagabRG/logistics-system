@@ -59,6 +59,11 @@ export async function PUT(
     if (data.markup_percent !== undefined) { fields.push('markup_percent = ?'); values.push(data.markup_percent); }
     if (data.final_price !== undefined) { fields.push('final_price = ?'); values.push(data.final_price); }
     if (data.currency !== undefined) { fields.push('currency = ?'); values.push(data.currency); }
+    if (data.sea_base_price !== undefined) { fields.push('sea_base_price = ?'); values.push(data.sea_base_price); }
+    if (data.sea_markup_percent !== undefined) { fields.push('sea_markup_percent = ?'); values.push(data.sea_markup_percent); }
+    if (data.sea_final_price !== undefined) { fields.push('sea_final_price = ?'); values.push(data.sea_final_price); }
+    if (data.sea_currency !== undefined) { fields.push('sea_currency = ?'); values.push(data.sea_currency); }
+    if (data.is_dual_mode !== undefined) { fields.push('is_dual_mode = ?'); values.push(data.is_dual_mode ? 1 : 0); }
     if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
     if (data.handling_mode !== undefined) { fields.push('handling_mode = ?'); values.push(data.handling_mode); }
     if (data.rfq_id !== undefined) { fields.push('rfq_id = ?'); values.push(data.rfq_id); }

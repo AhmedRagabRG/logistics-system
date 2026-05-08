@@ -17,6 +17,11 @@ interface QuoteDetailFieldsProps {
     markup_percent: number;
     final_price: number;
     currency: string;
+    sea_base_price: number;
+    sea_markup_percent: number;
+    sea_final_price: number;
+    sea_currency: string;
+    is_dual_mode: boolean;
     status: string;
     transport_mode: string;
     toggle_state_at_creation: string;
@@ -136,6 +141,45 @@ export default function QuoteDetailFields({ quote: initialQuote, locale }: Quote
           quoteId={quote.id}
           onUpdate={handleUpdate}
         />
+
+        {quote.is_dual_mode && (
+          <>
+            <EditableField
+              label="Sea Base Price"
+              value={quote.sea_base_price}
+              field="sea_base_price"
+              quoteId={quote.id}
+              type="number"
+              displayValue={quote.sea_base_price > 0 ? `${fmt(quote.sea_base_price)} ${quote.sea_currency}` : 'N/A'}
+              onUpdate={handleUpdate}
+            />
+            <EditableField
+              label="Sea Markup"
+              value={quote.sea_markup_percent}
+              field="sea_markup_percent"
+              quoteId={quote.id}
+              type="number"
+              displayValue={quote.sea_markup_percent > 0 ? `%${quote.sea_markup_percent}` : 'N/A'}
+              onUpdate={handleUpdate}
+            />
+            <EditableField
+              label="Sea Final Price"
+              value={quote.sea_final_price}
+              field="sea_final_price"
+              quoteId={quote.id}
+              type="number"
+              displayValue={quote.sea_final_price > 0 ? `${fmt(quote.sea_final_price)} ${quote.sea_currency}` : 'Pending'}
+              onUpdate={handleUpdate}
+            />
+            <EditableField
+              label="Sea Currency"
+              value={quote.sea_currency}
+              field="sea_currency"
+              quoteId={quote.id}
+              onUpdate={handleUpdate}
+            />
+          </>
+        )}
 
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">{_t('transport_mode')}</div>

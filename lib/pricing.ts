@@ -16,6 +16,12 @@ export interface PricingResult {
   finalPrice: number;
   currency: string;
   found: boolean;
+  // Dual-mode fields — populated when route has both road and sea
+  seaBasePrice: number | null;
+  seaMarkupPercent: number | null;
+  seaFinalPrice: number | null;
+  seaCurrency: string | null;
+  hasBothModes: boolean;
 }
 
 const OVERSIZE_THRESHOLD_KG = 22000; // 22 tons
@@ -32,6 +38,11 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
     finalPrice: 0,
     currency: 'TRY',
     found: false,
+    seaBasePrice: null,
+    seaMarkupPercent: null,
+    seaFinalPrice: null,
+    seaCurrency: null,
+    hasBothModes: false,
   };
 
   const transportMode = input.transportMode ?? 'road';
@@ -115,17 +126,35 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
 
   const route = rows[0];
 
-  // Use sea price if explicitly requested AND sea is active AND sea price > 0
-  const useSea = transportMode === 'sea' && route.is_sea_active && route.sea_base_price > 0;
+  const marginRate = input.marginRate ?? 0;
+  const markupMultiplier = 1 + route.markup_percent / 100;
+  const marginMultiplier = 1 + marginRate / 100;
+  const roadFinalPrice = route.base_price * markupMultiplier * marginMultiplier;
+
+  // Calculate sea price if sea is active and has a base price
+  const hasSea = route.is_sea_active && route.sea_base_price > 0;
+  let seaBasePrice: number | null = null;
+  let seaMarkupPercent: number | null = null;
+  let seaFinalPrice: number | null = null;
+  let seaCurrency: string | null = null;
+
+  if (hasSea) {
+    const seaMarkupMultiplier = 1 + route.sea_markup_percent / 100;
+    seaBasePrice = route.sea_base_price;
+    seaMarkupPercent = route.sea_markup_percent;
+    seaFinalPrice = route.sea_base_price * seaMarkupMultiplier * marginMultiplier;
+    seaCurrency = route.sea_currency;
+  }
+
+  const hasBothModes = Boolean(hasSea);
+
+  // Use sea price as primary if explicitly requested AND sea is active
+  const useSea = transportMode === 'sea' && hasSea;
 
   const basePrice = useSea ? route.sea_base_price : route.base_price;
   const markupPercent = useSea ? route.sea_markup_percent : route.markup_percent;
   const currency = useSea ? route.sea_currency : route.currency;
-
-  const marginRate = input.marginRate ?? 0;
-  const markupMultiplier = 1 + markupPercent / 100;
-  const marginMultiplier = 1 + marginRate / 100;
-  const finalPrice = basePrice * markupMultiplier * marginMultiplier;
+  const finalPrice = useSea ? (seaFinalPrice ?? 0) : roadFinalPrice;
 
   return {
     basePrice,
@@ -134,5 +163,10 @@ export async function calculatePricing(input: PricingInput): Promise<PricingResu
     finalPrice,
     currency,
     found: true,
+    seaBasePrice,
+    seaMarkupPercent,
+    seaFinalPrice,
+    seaCurrency,
+    hasBothModes,
   };
 }

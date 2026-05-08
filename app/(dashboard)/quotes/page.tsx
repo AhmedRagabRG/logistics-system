@@ -17,6 +17,7 @@ interface QuoteItem {
   status: string;
   transport_mode: string;
   is_oversize: boolean;
+  is_dual_mode: boolean;
   rfq_id: number | null;
   review_reason: string | null;
   created_at: string;

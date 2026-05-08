@@ -270,6 +270,7 @@ export interface QuoteListItem {
   status: string;
   transport_mode: string;
   is_oversize: boolean;
+  is_dual_mode: boolean;
   rfq_id: number | null;
   review_reason: string | null;
   created_at: string;
@@ -342,7 +343,7 @@ export async function getQuotes(filters: {
 
   const query = `
     SELECT q.id, q.origin_region, q.destination_region, q.final_price, q.currency, q.status, q.transport_mode,
-           q.is_oversize, q.rfq_id, q.review_reason, q.created_at, q.origin_postal_code, q.destination_postal_code, q.weight_kg,
+           q.is_oversize, q.is_dual_mode, q.rfq_id, q.review_reason, q.created_at, q.origin_postal_code, q.destination_postal_code, q.weight_kg,
            s.channel, s.language, s.customer_name
     FROM quotes q
     JOIN shipment_requests s ON s.id = q.shipment_request_id
@@ -361,6 +362,7 @@ export async function getQuotes(filters: {
         status: string;
         transport_mode: string;
         is_oversize: boolean;
+        is_dual_mode: boolean;
         rfq_id: number | null;
         review_reason: string | null;
         created_at: string;
@@ -384,6 +386,7 @@ export async function getQuotes(filters: {
       status: row.status,
       transport_mode: row.transport_mode,
       is_oversize: row.is_oversize,
+      is_dual_mode: row.is_dual_mode,
       rfq_id: row.rfq_id,
       review_reason: row.review_reason,
       created_at: row.created_at,

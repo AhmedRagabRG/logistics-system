@@ -23,6 +23,11 @@ interface QuoteDetail {
   markup_percent: number;
   final_price: number;
   currency: string;
+  sea_base_price: number;
+  sea_markup_percent: number;
+  sea_final_price: number;
+  sea_currency: string;
+  is_dual_mode: boolean;
   status: string;
   transport_mode: string;
   toggle_state_at_creation: string;
@@ -48,7 +53,9 @@ async function fetchQuote(id: number): Promise<QuoteDetail | null> {
     Array<RowDataPacket & QuoteDetail>
   >(
      `SELECT q.id, q.origin_region, q.destination_region, q.origin_postal_code, q.destination_postal_code, q.weight_kg, q.cargo_type,
-             q.base_price, q.markup_percent, q.final_price, q.currency, q.status, q.transport_mode, q.toggle_state_at_creation, q.is_oversize, q.rfq_id, q.review_reason,
+             q.base_price, q.markup_percent, q.final_price, q.currency,
+             q.sea_base_price, q.sea_markup_percent, q.sea_final_price, q.sea_currency, q.is_dual_mode,
+             q.status, q.transport_mode, q.toggle_state_at_creation, q.is_oversize, q.rfq_id, q.review_reason,
              q.response_text, q.approved_by, q.approved_at, q.created_at,
              a.display_name as approver_name,
              r.rfq_reference, r.status as rfq_status,
