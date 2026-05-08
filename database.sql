@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS rfq_vendor_assignments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_id INT NOT NULL,
     vendor_id INT NOT NULL,
-    contact_channel ENUM('email', 'whatsapp') NOT NULL,
+    contact_channel ENUM('email', 'whatsapp', 'telegram') NOT NULL,
     contact_id VARCHAR(64) NOT NULL,
     response_price DECIMAL(12,2),
     response_currency VARCHAR(3),
