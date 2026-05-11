@@ -39,6 +39,18 @@ async function runMigrations() {
     console.log('⏭️  customer_messaging_windows already exists');
   }
 
+  // Check if authorized_person_name exists
+  const [authPersonCols] = await pool.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vendors' AND COLUMN_NAME = 'authorized_person_name'`
+  );
+  if ((authPersonCols as any[]).length === 0) {
+    await pool.execute(`ALTER TABLE vendors ADD COLUMN authorized_person_name VARCHAR(128) AFTER city`);
+    console.log('✅ Added authorized_person_name to vendors');
+  } else {
+    console.log('⏭️  authorized_person_name already exists');
+  }
+
   await pool.end();
   console.log('All migrations completed.');
 }
