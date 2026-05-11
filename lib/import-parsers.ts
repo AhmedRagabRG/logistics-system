@@ -130,9 +130,41 @@ export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
 
 // ─── Vendors ───────────────────────────────────────────────────────────────
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[\+\(]?[\d\s\-\(\)\.]{7,}$/;
+const TG_REGEX = /^@?[a-zA-Z0-9_]{5,}$/;
+
+function looksLikeEmail(val: unknown): boolean {
+  if (val === undefined || val === null || val === '') return false;
+  const s = String(val).trim();
+  return s.length > 5 && EMAIL_REGEX.test(s);
+}
+
+function looksLikePhone(val: unknown): boolean {
+  if (val === undefined || val === null || val === '') return false;
+  const s = String(val).trim();
+  // Must have at least 7 digits
+  const digits = s.replace(/\D/g, '');
+  return digits.length >= 7 && PHONE_REGEX.test(s);
+}
+
+function looksLikeTelegram(val: unknown): boolean {
+  if (val === undefined || val === null || val === '') return false;
+  const s = String(val).trim();
+  return TG_REGEX.test(s) || s.startsWith('@');
+}
+
+function normalizeKey(key: string): string {
+  return key
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[\u00A0\u2000-\u200B\uFEFF]/g, ' ')
+    .trim();
+}
+
 function getCellValue(row: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
-    const normalizedKey = key.toLowerCase().replace(/\s+/g, ' ').trim();
+    const normalizedKey = normalizeKey(key);
     // Try exact match first
     if (row[key] !== undefined && row[key] !== '') {
       return String(row[key]).trim();
@@ -142,10 +174,43 @@ function getCellValue(row: Record<string, unknown>, keys: string[]): string {
       if (
         v !== undefined &&
         v !== '' &&
-        k.toLowerCase().replace(/\s+/g, ' ').trim() === normalizedKey
+        normalizeKey(k) === normalizedKey
       ) {
         return String(v).trim();
       }
+    }
+  }
+  return '';
+}
+
+function findByHeaderPattern(
+  row: Record<string, unknown>,
+  patterns: RegExp[]
+): string {
+  for (const [k, v] of Object.entries(row)) {
+    if (v === undefined || v === '' || v === null) continue;
+    const keyNorm = normalizeKey(k);
+    for (const pattern of patterns) {
+      if (pattern.test(keyNorm)) {
+        return String(v).trim();
+      }
+    }
+  }
+  return '';
+}
+
+function findByValuePattern(
+  row: Record<string, unknown>,
+  predicate: (val: unknown) => boolean,
+  excludeKeys: RegExp[] = []
+): string {
+  for (const [k, v] of Object.entries(row)) {
+    if (v === undefined || v === '' || v === null) continue;
+    const keyNorm = normalizeKey(k);
+    // Skip columns that are clearly not contact info
+    if (excludeKeys.some((p) => p.test(keyNorm))) continue;
+    if (predicate(v)) {
+      return String(v).trim();
     }
   }
   return '';
@@ -160,7 +225,6 @@ function toTitleCase(str: string): string {
 }
 
 function cleanSheetName(sheetName: string): string {
-  // Remove "Example" prefix and surrounding parentheses/quotes
   return sheetName
     .replace(/example/gi, '')
     .replace(/[()"'\[\]]/g, ' ')
@@ -191,72 +255,122 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
     const data = xlsx.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
 
     for (const row of data) {
-      const name = getCellValue(row, ['FİRMA', 'FIRMA', 'firma', 'Firma', 'FIRMA ADI', 'firma adi', 'COMPANY', 'company', 'Company Name', 'company name']);
-      const origin = getCellValue(row, ['MENŞEİ', 'MENSEI', 'mensei', 'Mensei', 'ORIGIN', 'origin', 'Origin City', 'origin city', 'CITY', 'city', 'ŞEHİR', 'sehir']);
-      const email = getCellValue(row, [
-        'MAİL İHRACAT',
-        'MAIL İHRACAT',
-        'MAİL İTHALAT',
-        'MAIL İTHALAT',
-        'email',
-        'EMAIL',
-        'E-mail',
-        'e-mail',
-        'E-MAIL',
-        'MAİL',
-        'MAIL',
-        'mail',
-        'E POSTA',
-        'E-POSTA',
-        'e-posta',
+      // ── Name ───────────────────────────────────────────────────────────
+      let name = getCellValue(row, [
+        'FİRMA', 'FIRMA', 'firma', 'Firma',
+        'FIRMA ADI', 'firma adi', 'COMPANY', 'company',
+        'Company Name', 'company name', 'NAME', 'name',
       ]);
-      const phone = getCellValue(row, [
-        'CEP',
-        'TEL',
-        'cep',
-        'tel',
-        'phone',
-        'PHONE',
-        'TELEFON',
-        'telefon',
-        'Telefon',
-        'MOBILE',
-        'mobile',
-        'GSM',
-        'gsm',
-        'TEL NO',
-        'tel no',
-      ]);
-      const telegramChatId = getCellValue(row, [
-        'TELEGRAM',
-        'TELEGRAM CHAT ID',
-        'telegram_chat_id',
-        'telegram',
-        'Telegram',
-        'TELEGRAM ID',
-        'telegram id',
-        'TG',
-        'tg',
-      ]);
-      const notes = getCellValue(row, ['NOT', 'not', 'NOTLAR', 'notlar', 'Notes', 'notes', 'NOTES', 'AÇIKLAMA', 'aciklama', 'DESCRIPTION', 'description']);
-      const useCustomMarginRaw = getCellValue(row, ['USE CUSTOM MARGIN', 'use_custom_margin', 'CUSTOM MARGIN', 'custom_margin', 'ÖZEL KAR', 'ozel kar']).toLowerCase();
-      const marginRateRaw = getCellValue(row, ['MARGIN RATE (%)', 'margin_rate', 'MARGIN RATE', 'margin rate', 'KAR ORANI', 'kar orani', 'KAR %', 'kar %']);
-      const preferredChannelsRaw = getCellValue(row, [
-        'PREFERRED CHANNELS',
-        'preferred_channels',
-        'TERCİH EDİLEN KANALLAR',
-        'tercih edilen kanallar',
-        'TERCIH EDILEN KANALLAR',
-        'KANALLAR',
-        'kanallar',
-        'CHANNELS',
-        'channels',
-      ]);
-
+      if (!name) {
+        // Fallback: find a value that looks like a company name (contains "LOJİSTİK", "TRANS", "NAK.", etc.)
+        for (const [k, v] of Object.entries(row)) {
+          const s = String(v).trim();
+          if (s.length > 3 && /lojistik|transport|trans|nakliye|nak\.|loj\.|group|gmbh|ltd/i.test(s)) {
+            name = s;
+            break;
+          }
+        }
+      }
       if (!name) continue;
 
+      // ── City / Origin ──────────────────────────────────────────────────
+      const origin = getCellValue(row, [
+        'MENŞEİ', 'MENSEI', 'mensei', 'Mensei',
+        'ORIGIN', 'origin', 'Origin City', 'origin city',
+        'CITY', 'city', 'ŞEHİR', 'sehir', 'SEHIR',
+      ]);
+
+      // ── Email ──────────────────────────────────────────────────────────
+      let email = getCellValue(row, [
+        'MAİL İHRACAT', 'MAIL İHRACAT', 'MAİL İTHALAT', 'MAIL İTHALAT',
+        'email', 'EMAIL', 'E-mail', 'e-mail', 'E-MAIL',
+        'MAİL', 'MAIL', 'mail', 'E POSTA', 'E-POSTA', 'e-posta',
+        'EPOSTA', 'eposta', 'E-MAIL ADDRESS', 'e-mail address',
+      ]);
+      // Fallback 1: find column whose header contains "mail" or "e-posta"
+      if (!email) {
+        email = findByHeaderPattern(row, [
+          /mail/, /e-?posta/, /e-posta/, /eposta/, /email/,
+        ]);
+      }
+      // Fallback 2: scan all values for something that looks like an email
+      if (!email) {
+        email = findByValuePattern(row, looksLikeEmail, [
+          /^#/, /^no\b/, /sıra/, /index/, /id$/, /numara/,
+        ]);
+      }
+
+      // ── Phone ──────────────────────────────────────────────────────────
+      let phone = getCellValue(row, [
+        'CEP', 'TEL', 'cep', 'tel', 'phone', 'PHONE',
+        'TELEFON', 'telefon', 'Telefon', 'MOBILE', 'mobile',
+        'GSM', 'gsm', 'TEL NO', 'tel no', 'TELEFON NO',
+        'telefon no', 'TEL\.?', 'tel\.?',
+      ]);
+      // Fallback 1: find column whose header contains "tel", "cep", "gsm", "phone"
+      if (!phone) {
+        phone = findByHeaderPattern(row, [
+          /tel/, /cep/, /gsm/, /phone/, /mobil/, /faks/, /fax/,
+        ]);
+      }
+      // Fallback 2: scan all values for something that looks like a phone
+      if (!phone) {
+        phone = findByValuePattern(row, looksLikePhone, [
+          /^#/, /^no\b/, /sıra/, /index/, /id$/, /numara/, /mail/, /posta/, /email/,
+        ]);
+      }
+
+      // ── Telegram ───────────────────────────────────────────────────────
+      let telegramChatId = getCellValue(row, [
+        'TELEGRAM', 'TELEGRAM CHAT ID', 'telegram_chat_id',
+        'telegram', 'Telegram', 'TELEGRAM ID', 'telegram id',
+        'TG', 'tg', 'TLG', 'tlg',
+      ]);
+      if (!telegramChatId) {
+        telegramChatId = findByHeaderPattern(row, [
+          /telegram/, /tg\b/, /tlg/,
+        ]);
+      }
+      if (!telegramChatId) {
+        telegramChatId = findByValuePattern(row, looksLikeTelegram, [
+          /^#/, /^no\b/, /sıra/, /index/, /id$/, /numara/,
+          /mail/, /posta/, /email/, /tel/, /cep/, /gsm/, /phone/,
+        ]);
+      }
+
+      // ── Notes ──────────────────────────────────────────────────────────
+      const notes = getCellValue(row, [
+        'NOT', 'not', 'NOTLAR', 'notlar', 'Notes', 'notes',
+        'NOTES', 'AÇIKLAMA', 'aciklama', 'ACIKLAMA',
+        'DESCRIPTION', 'description', 'DETAY', 'detay',
+      ]);
+
+      // ── Margin ─────────────────────────────────────────────────────────
+      const useCustomMarginRaw = getCellValue(row, [
+        'USE CUSTOM MARGIN', 'use_custom_margin',
+        'CUSTOM MARGIN', 'custom_margin',
+        'ÖZEL KAR', 'ozel kar', 'OZEL KAR',
+      ]).toLowerCase();
+      const marginRateRaw = getCellValue(row, [
+        'MARGIN RATE (%)', 'margin_rate', 'MARGIN RATE',
+        'margin rate', 'KAR ORANI', 'kar orani',
+        'KAR ORANI (%)', 'kar orani (%)',
+        'KAR %', 'kar %', 'KAR ORAN', 'kar oran',
+      ]);
+      const preferredChannelsRaw = getCellValue(row, [
+        'PREFERRED CHANNELS', 'preferred_channels',
+        'TERCİH EDİLEN KANALLAR', 'tercih edilen kanallar',
+        'TERCIH EDILEN KANALLAR', 'KANALLAR',
+        'kanallar', 'CHANNELS', 'channels',
+      ]);
+
       const countryCoverage = toTitleCase(cleanSheetName(sheetName));
-      const useCustomMargin = useCustomMarginRaw === 'yes' || useCustomMarginRaw === 'true' || useCustomMarginRaw === '1' || useCustomMarginRaw === 'evet';
+      const useCustomMargin =
+        useCustomMarginRaw === 'yes' ||
+        useCustomMarginRaw === 'true' ||
+        useCustomMarginRaw === '1' ||
+        useCustomMarginRaw === 'evet' ||
+        useCustomMarginRaw === 'e';
       const marginRate = parseFloat(marginRateRaw) || 0;
 
       // Parse preferred channels — default to email + whatsapp if not specified

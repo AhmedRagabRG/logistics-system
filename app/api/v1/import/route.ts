@@ -76,6 +76,19 @@ export async function POST(request: NextRequest) {
 
       case 'vendors': {
         const rows = parseVendors(buffer);
+        // Debug: log first 3 rows to help diagnose import issues
+        console.log('[IMPORT DEBUG] Parsed', rows.length, 'vendor rows');
+        for (let i = 0; i < Math.min(3, rows.length); i++) {
+          const r = rows[i];
+          console.log('[IMPORT DEBUG] Row', i + 1, ':', {
+            name: r.name,
+            country: r.country_coverage,
+            city: r.city,
+            email: r.contact_email,
+            phone: r.contact_phone,
+            telegram: r.telegram_chat_id,
+          });
+        }
         for (const row of rows) {
           try {
             await pool.execute<ResultSetHeader>(
