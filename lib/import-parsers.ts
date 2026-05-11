@@ -130,13 +130,44 @@ export function parseRoutePricing(buffer: Buffer): RoutePricingRow[] {
 
 // ─── Vendors ───────────────────────────────────────────────────────────────
 
+function getCellValue(row: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const normalizedKey = key.toLowerCase().replace(/\s+/g, ' ').trim();
+    // Try exact match first
+    if (row[key] !== undefined && row[key] !== '') {
+      return String(row[key]).trim();
+    }
+    // Try case-insensitive match
+    for (const [k, v] of Object.entries(row)) {
+      if (
+        v !== undefined &&
+        v !== '' &&
+        k.toLowerCase().replace(/\s+/g, ' ').trim() === normalizedKey
+      ) {
+        return String(v).trim();
+      }
+    }
+  }
+  return '';
+}
+
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toLocaleUpperCase('tr') + word.slice(1))
+    .join(' ');
+}
+
 export interface VendorRow {
   name: string;
   country_coverage: string;
+  city: string;
   expertise_notes: string;
   contact_email: string;
   contact_phone: string;
   telegram_chat_id: string;
+  preferred_channels: string[];
   use_custom_margin: boolean;
   margin_rate: number;
 }
@@ -152,28 +183,95 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
     const data = xlsx.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
 
     for (const row of data) {
-      const name = String(row['FİRMA'] || row['FIRMA'] || '').trim();
-      const origin = String(row['MENŞEİ'] || row['MENSEI'] || '').trim();
-      const email = String(row['MAİL İHRACAT'] || row['MAIL İHRACAT'] || row['MAİL İTHALAT'] || row['email'] || '').trim();
-      const phone = String(row['CEP'] || row['TEL'] || row['phone'] || '').trim();
-      const telegramChatId = String(row['TELEGRAM'] || row['TELEGRAM CHAT ID'] || row['telegram_chat_id'] || '').trim();
-      const notes = String(row['NOT'] || row['not'] || '').trim();
-      const useCustomMarginRaw = String(row['USE CUSTOM MARGIN'] || row['use_custom_margin'] || '').trim().toLowerCase();
-      const marginRateRaw = String(row['MARGIN RATE (%)'] || row['margin_rate'] || '').trim();
+      const name = getCellValue(row, ['FİRMA', 'FIRMA', 'firma', 'Firma', 'FIRMA ADI', 'firma adi', 'COMPANY', 'company', 'Company Name', 'company name']);
+      const origin = getCellValue(row, ['MENŞEİ', 'MENSEI', 'mensei', 'Mensei', 'ORIGIN', 'origin', 'Origin City', 'origin city', 'CITY', 'city', 'ŞEHİR', 'sehir']);
+      const email = getCellValue(row, [
+        'MAİL İHRACAT',
+        'MAIL İHRACAT',
+        'MAİL İTHALAT',
+        'MAIL İTHALAT',
+        'email',
+        'EMAIL',
+        'E-mail',
+        'e-mail',
+        'E-MAIL',
+        'MAİL',
+        'MAIL',
+        'mail',
+        'E POSTA',
+        'E-POSTA',
+        'e-posta',
+      ]);
+      const phone = getCellValue(row, [
+        'CEP',
+        'TEL',
+        'cep',
+        'tel',
+        'phone',
+        'PHONE',
+        'TELEFON',
+        'telefon',
+        'Telefon',
+        'MOBILE',
+        'mobile',
+        'GSM',
+        'gsm',
+        'TEL NO',
+        'tel no',
+      ]);
+      const telegramChatId = getCellValue(row, [
+        'TELEGRAM',
+        'TELEGRAM CHAT ID',
+        'telegram_chat_id',
+        'telegram',
+        'Telegram',
+        'TELEGRAM ID',
+        'telegram id',
+        'TG',
+        'tg',
+      ]);
+      const notes = getCellValue(row, ['NOT', 'not', 'NOTLAR', 'notlar', 'Notes', 'notes', 'NOTES', 'AÇIKLAMA', 'aciklama', 'DESCRIPTION', 'description']);
+      const useCustomMarginRaw = getCellValue(row, ['USE CUSTOM MARGIN', 'use_custom_margin', 'CUSTOM MARGIN', 'custom_margin', 'ÖZEL KAR', 'ozel kar']).toLowerCase();
+      const marginRateRaw = getCellValue(row, ['MARGIN RATE (%)', 'margin_rate', 'MARGIN RATE', 'margin rate', 'KAR ORANI', 'kar orani', 'KAR %', 'kar %']);
+      const preferredChannelsRaw = getCellValue(row, [
+        'PREFERRED CHANNELS',
+        'preferred_channels',
+        'TERCİH EDİLEN KANALLAR',
+        'tercih edilen kanallar',
+        'TERCIH EDILEN KANALLAR',
+        'KANALLAR',
+        'kanallar',
+        'CHANNELS',
+        'channels',
+      ]);
 
       if (!name) continue;
 
-      const countryCoverage = origin ? `${sheetName} (${origin})` : sheetName;
+      const countryCoverage = toTitleCase(sheetName);
       const useCustomMargin = useCustomMarginRaw === 'yes' || useCustomMarginRaw === 'true' || useCustomMarginRaw === '1' || useCustomMarginRaw === 'evet';
       const marginRate = parseFloat(marginRateRaw) || 0;
+
+      // Parse preferred channels — default to email + whatsapp if not specified
+      let preferredChannels: string[] = ['email', 'whatsapp'];
+      if (preferredChannelsRaw) {
+        const parsed = preferredChannelsRaw
+          .split(/[,;/|]+/)
+          .map((c) => c.trim().toLowerCase())
+          .filter((c) => ['email', 'whatsapp', 'telegram'].includes(c));
+        if (parsed.length > 0) {
+          preferredChannels = parsed;
+        }
+      }
 
       rows.push({
         name,
         country_coverage: countryCoverage,
+        city: origin,
         expertise_notes: notes,
         contact_email: email,
         contact_phone: phone,
         telegram_chat_id: telegramChatId,
+        preferred_channels: preferredChannels,
         use_custom_margin: useCustomMargin,
         margin_rate: marginRate,
       });
