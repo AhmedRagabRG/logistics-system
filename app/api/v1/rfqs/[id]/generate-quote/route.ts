@@ -131,6 +131,7 @@ export async function POST(
     await logPricingEvent({
       event_type: 'rfq_quote_generated',
       quote_id: rfq.quote_id,
+      rfq_id: rfqId,
       admin_id: auth.admin.id,
       details: { vendor_id: selected_vendor_id, vendor_price: vendorPrice, margin, margin_source: marginSource, final_price: finalPrice },
     });

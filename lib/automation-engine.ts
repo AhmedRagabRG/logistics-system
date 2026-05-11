@@ -504,6 +504,7 @@ async function createQuoteForRoute({
           await logVendorEvent({
             event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
             quote_id: quoteId,
+            rfq_id: rfqId,
             vendor_id: vendor.id,
             details: {
               rfq_reference: rfqReference,
@@ -520,6 +521,7 @@ async function createQuoteForRoute({
       await logPricingEvent({
         event_type: 'rfq_initiated',
         quote_id: quoteId,
+        rfq_id: rfqId,
         details: { target_country: targetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference },
       });
     } else if (activeVendors.length === 0) {
@@ -794,18 +796,19 @@ export async function processExpiredRFQs(): Promise<{
           );
         }
 
-        await logPricingEvent({
-          event_type: sendResult.success ? 'customer_rfq_ready_sent' : 'customer_rfq_ready_failed',
-          quote_id: rfq.quote_id,
-          details: {
-            channel: customer.channel,
-            contact: customer.customer_contact,
-            final_price: finalPrice,
-            vendor_id: selectedVendorId,
-            sent: sendResult.success,
-            error: sendResult.error ?? null,
-          },
-        });
+    await logPricingEvent({
+      event_type: sendResult.success ? 'customer_rfq_ready_sent' : 'customer_rfq_ready_failed',
+      quote_id: rfq.quote_id,
+      rfq_id: rfq.id,
+      details: {
+        channel: customer.channel,
+        contact: customer.customer_contact,
+        final_price: finalPrice,
+        vendor_id: selectedVendorId,
+        sent: sendResult.success,
+        error: sendResult.error ?? null,
+      },
+    });
       }
     } else {
       console.log(`[RFQ-CRON] Manual approval mode — skipping customer notification for quote ${rfq.quote_id}`);
@@ -823,6 +826,7 @@ export async function processExpiredRFQs(): Promise<{
     await logPricingEvent({
       event_type: 'rfq_quote_generated',
       quote_id: rfq.quote_id,
+      rfq_id: rfq.id,
       details: {
         vendor_id: selectedVendorId,
         vendor_price: lowestPrice,
@@ -1008,6 +1012,7 @@ export async function processVendorReply(
   await logVendorEvent({
     event_type: 'vendor_response_received',
     quote_id: assignment.rfq_id,
+    rfq_id: assignment.rfq_id,
     vendor_id: assignment.vendor_id,
     details: { price: responsePrice, currency: responseCurrency, contact_id: contactId, matched: true },
   });

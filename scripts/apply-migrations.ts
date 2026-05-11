@@ -51,6 +51,18 @@ async function runMigrations() {
     console.log('⏭️  authorized_person_name already exists');
   }
 
+  // Check if system_logs has quote_id column
+  const [quoteIdCols] = await pool.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_logs' AND COLUMN_NAME = 'quote_id'`
+  );
+  if ((quoteIdCols as any[]).length === 0) {
+    await pool.execute(`ALTER TABLE system_logs ADD COLUMN quote_id INT NULL AFTER admin_id, ADD COLUMN rfq_id INT NULL AFTER quote_id, ADD INDEX idx_quote_id (quote_id), ADD INDEX idx_rfq_id (rfq_id)`);
+    console.log('✅ Added quote_id and rfq_id to system_logs');
+  } else {
+    console.log('⏭️  quote_id and rfq_id already exist in system_logs');
+  }
+
   await pool.end();
   console.log('All migrations completed.');
 }

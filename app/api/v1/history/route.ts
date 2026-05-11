@@ -66,10 +66,12 @@ export async function GET(request: NextRequest) {
     const total = countRows[0]?.total ?? 0;
 
     const query = `
-      SELECT l.id, l.event_type, l.admin_id, l.details, l.created_at,
-             a.username as admin_username, a.display_name as admin_display_name
+      SELECT l.id, l.event_type, l.admin_id, l.quote_id, l.rfq_id, l.details, l.created_at,
+             a.username as admin_username, a.display_name as admin_display_name,
+             r.rfq_reference
       FROM system_logs l
       LEFT JOIN admin_accounts a ON a.id = l.admin_id
+      LEFT JOIN rfq_records r ON r.id = l.rfq_id
       ${joinClause}
       ${whereClause}
       ORDER BY l.created_at DESC
@@ -81,10 +83,13 @@ export async function GET(request: NextRequest) {
           id: number;
           event_type: string;
           admin_id: number | null;
+          quote_id: number | null;
+          rfq_id: number | null;
           details: string | null;
           created_at: string;
           admin_username: string | null;
           admin_display_name: string | null;
+          rfq_reference: string | null;
         }
       >
     >(query, params);
@@ -108,6 +113,9 @@ export async function GET(request: NextRequest) {
               display_name: row.admin_display_name,
             }
           : null,
+        quote_id: row.quote_id,
+        rfq_id: row.rfq_id,
+        rfq_reference: row.rfq_reference,
         details: parsedDetails,
         created_at: row.created_at,
       };

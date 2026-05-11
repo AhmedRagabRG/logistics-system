@@ -10,6 +10,9 @@ interface HistoryEvent {
   id: number;
   event_type: string;
   admin: { id: number; username: string; display_name: string | null } | null;
+  quote_id: number | null;
+  rfq_id: number | null;
+  rfq_reference: string | null;
   details: Record<string, unknown> | null;
   created_at: string;
 }
@@ -67,10 +70,12 @@ export default function HistoryPage() {
   }
 
   function exportCSV() {
-    const headers = [_t('label_id'), _t('event_type'), _t('admin'), _t('details'), _t('date')];
+    const headers = [_t('label_id'), _t('event_type'), 'Quote #', 'RFQ Ref', _t('admin'), _t('details'), _t('date')];
     const rows = events.map((e) => [
       e.id,
       _t(`event_${e.event_type}` as 'event_login'),
+      e.quote_id ?? '',
+      e.rfq_reference ?? '',
       e.admin ? e.admin.display_name || e.admin.username : _t('system_label'),
       e.details ? JSON.stringify(e.details) : '',
       new Date(e.created_at).toISOString(),
@@ -144,6 +149,8 @@ export default function HistoryPage() {
               <thead>
                 <tr>
                   <th>{_t('event_type')}</th>
+                  <th>Quote #</th>
+                  <th>RFQ Ref</th>
                   <th>{_t('admin')}</th>
                   <th>{_t('details')}</th>
                   <th>{_t('date')}</th>
@@ -156,6 +163,26 @@ export default function HistoryPage() {
                       <span className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getEventBadgeStyle(event.event_type)}`}>
                         {_t(`event_${event.event_type}` as 'event_login')}
                       </span>
+                    </td>
+                    <td className="font-mono text-[10px] text-[var(--secondary)]">
+                      {event.quote_id ? (
+                        <a href={`/quotes/${event.quote_id}`} className="text-[var(--accent)] hover:underline">
+                          #{event.quote_id}
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="font-mono text-[10px] text-[var(--secondary)]">
+                      {event.rfq_reference ? (
+                        <a href={`/rfqs/${event.rfq_id}`} className="text-[var(--accent)] hover:underline">
+                          {event.rfq_reference}
+                        </a>
+                      ) : event.rfq_id ? (
+                        `#${event.rfq_id}`
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="text-[var(--secondary)]">
                       {event.admin ? event.admin.display_name || event.admin.username : _t('system_label')}

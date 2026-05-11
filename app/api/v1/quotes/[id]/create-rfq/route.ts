@@ -190,6 +190,7 @@ export async function POST(
         await logVendorEvent({
           event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
           quote_id: quoteId,
+          rfq_id: rfqId,
           vendor_id: vendor.id,
           details: {
             rfq_reference: rfqReference,
@@ -206,6 +207,7 @@ export async function POST(
     await logPricingEvent({
       event_type: 'rfq_initiated',
       quote_id: quoteId,
+      rfq_id: rfqId,
       admin_id: auth.admin.id,
       details: { target_country: targetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference, source: 'manual_from_quote' },
     });

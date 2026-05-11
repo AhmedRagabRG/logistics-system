@@ -75,6 +75,7 @@ export async function POST(
       await logVendorEvent({
         event_type: 'vendor_response_received',
         quote_id: rfq.quote_id,
+        rfq_id: rfqId,
         vendor_id: response.vendor_id,
         details: { price: response.price, currency: response.currency },
       });
