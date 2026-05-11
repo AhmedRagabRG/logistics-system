@@ -368,25 +368,25 @@ async function createQuoteForRoute({
 
   if (!pricingResult.found && !oversize) {
     // ─── Determine target country for vendor selection ───
-    // Vendors are located at the ORIGIN — they pick up the cargo and ship it.
-    // Fallback chain: parsed origin country → origin postal code → origin city → destination country (last resort)
+    // Vendors serve the DESTINATION — they ship cargo TO that country.
+    // Fallback chain: parsed destination country → destination postal code → destination city → origin country (last resort)
 
-    let targetCountry: string | null = parsed.origin_country ?? null;
-    let targetCountrySource = 'parsed.origin_country';
+    let targetCountry: string | null = parsed.destination_country ?? null;
+    let targetCountrySource = 'parsed.destination_country';
 
-    if (!targetCountry && originPostalCode) {
-      targetCountry = await resolveCountryFromPostalCode(originPostalCode);
-      if (targetCountry) targetCountrySource = 'origin_postal_code';
+    if (!targetCountry && destinationPostalCode) {
+      targetCountry = await resolveCountryFromPostalCode(destinationPostalCode);
+      if (targetCountry) targetCountrySource = 'destination_postal_code';
     }
 
-    if (!targetCountry && originCity) {
-      targetCountry = resolveCountryFromCity(originCity);
-      if (targetCountry) targetCountrySource = 'origin_city';
+    if (!targetCountry && destinationCity) {
+      targetCountry = resolveCountryFromCity(destinationCity);
+      if (targetCountry) targetCountrySource = 'destination_city';
     }
 
-    if (!targetCountry && parsed.destination_country) {
-      targetCountry = parsed.destination_country;
-      targetCountrySource = 'destination_country (fallback)';
+    if (!targetCountry && parsed.origin_country) {
+      targetCountry = parsed.origin_country;
+      targetCountrySource = 'origin_country (fallback)';
     }
 
     const finalTargetCountry = targetCountry ?? 'UNKNOWN';

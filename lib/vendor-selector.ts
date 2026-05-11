@@ -60,7 +60,7 @@ function getCountrySearchTerms(country: string): string[] {
 }
 
 /**
- * Select ALL active vendors that cover the given destination country.
+ * Select ALL active vendors that serve the given destination country.
  * Broadcasts RFQ to every matching vendor (no limit).
  * Uses country name normalization to handle Turkish/English/ISO variants.
  */

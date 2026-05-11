@@ -8,10 +8,10 @@ import { useCountries } from '@/hooks/use-countries';
 interface CreateRfqFormProps {
   quoteId: number;
   locale: string;
-  originRegion?: string | null;
+  destinationRegion?: string | null;
 }
 
-export default function CreateRfqForm({ quoteId, locale, originRegion }: CreateRfqFormProps) {
+export default function CreateRfqForm({ quoteId, locale, destinationRegion }: CreateRfqFormProps) {
   const _t = useDashboardT();
   const router = useRouter();
   const { countries, loading: countriesLoading } = useCountries(locale);
@@ -20,7 +20,7 @@ export default function CreateRfqForm({ quoteId, locale, originRegion }: CreateR
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-detect country from origin region when form opens (vendors are at origin)
+  // Auto-detect country from destination region when form opens (vendors serve the destination)
   const detectCountry = (region: string | null | undefined): string => {
     if (!region) return '';
     const r = region.toLowerCase();
@@ -64,7 +64,7 @@ export default function CreateRfqForm({ quoteId, locale, originRegion }: CreateR
     return (
       <button
         onClick={() => {
-          const detected = detectCountry(originRegion);
+          const detected = detectCountry(destinationRegion);
           if (detected) setTargetCountry(detected);
           setShowForm(true);
         }}
@@ -83,14 +83,14 @@ export default function CreateRfqForm({ quoteId, locale, originRegion }: CreateR
         </div>
         <p className="text-[10px] text-[var(--muted)]">
           {locale === 'tr'
-            ? 'Tedarikçiler kargonun yüklendiği ülkede (çıkış) bulunur. Çıkış ülkesi seçin.'
-            : 'Vendors are located at the origin (where cargo is picked up). Select the origin country.'}
+            ? 'Tedarikçiler varış ülkesine hizmet verir. Varış ülkesi seçin.'
+            : 'Vendors serve the destination country. Select the destination country.'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">
-              {locale === 'tr' ? 'Çıkış Ülkesi' : 'Origin Country'}
+              {locale === 'tr' ? 'Varış Ülkesi' : 'Destination Country'}
             </label>
             <select
               value={targetCountry}
