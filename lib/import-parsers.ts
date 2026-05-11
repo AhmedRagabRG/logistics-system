@@ -159,6 +159,14 @@ function toTitleCase(str: string): string {
     .join(' ');
 }
 
+function cleanSheetName(sheetName: string): string {
+  // Remove "Example" prefix and surrounding parentheses/quotes
+  return sheetName
+    .replace(/example/gi, '')
+    .replace(/[()"'\[\]]/g, ' ')
+    .trim();
+}
+
 export interface VendorRow {
   name: string;
   country_coverage: string;
@@ -247,7 +255,7 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
 
       if (!name) continue;
 
-      const countryCoverage = toTitleCase(sheetName);
+      const countryCoverage = toTitleCase(cleanSheetName(sheetName));
       const useCustomMargin = useCustomMarginRaw === 'yes' || useCustomMarginRaw === 'true' || useCustomMarginRaw === '1' || useCustomMarginRaw === 'evet';
       const marginRate = parseFloat(marginRateRaw) || 0;
 
