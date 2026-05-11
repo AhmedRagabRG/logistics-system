@@ -62,6 +62,7 @@ export const vendorSchema = z.object({
   name: z.string().min(1).max(128),
   country_coverage: z.string().min(1).max(255),
   city: z.string().max(128).optional(),
+  authorized_person_name: z.string().max(128).optional(),
   expertise_notes: z.string().max(2000).optional(),
   priority_ranking: z.coerce.number().int().min(1).max(10000).default(100),
   use_custom_margin: z.coerce.boolean().default(false),

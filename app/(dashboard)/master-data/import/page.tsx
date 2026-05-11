@@ -83,6 +83,12 @@ const REQUIREMENTS: Record<
         alternatives: ['MENSEI', 'CITY', 'city', 'ŞEHİR', 'sehir'],
       },
       {
+        key: 'YETKİLİ KİŞİ',
+        label: 'Authorized Person',
+        required: false,
+        alternatives: ['YETKİLİ', 'yetkili', 'AUTHORIZED PERSON', 'authorized person', 'İHRACAT', 'İTHALAT', 'CONTACT PERSON', 'MUHATAP', 'TEMSİLCİ'],
+      },
+      {
         key: 'MAİL İHRACAT / İTHALAT',
         label: 'Email',
         required: false,
@@ -103,6 +109,7 @@ const REQUIREMENTS: Record<
     example: {
       FİRMA: 'ABC Lojistik',
       'MENŞEİ': 'İstanbul',
+      'YETKİLİ KİŞİ': 'Ahmet Yılmaz',
       'MAİL İHRACAT / İTHALAT': 'info@abc.com',
       'CEP / TEL': '+90 532 123 45 67',
       TELEGRAM: '@abc_logistics',

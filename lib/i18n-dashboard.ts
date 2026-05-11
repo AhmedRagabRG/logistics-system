@@ -122,6 +122,8 @@ export type TranslationKey =
   | 'vendor_select_country'
   | 'vendor_city'
   | 'vendor_city_placeholder'
+  | 'vendor_authorized_person'
+  | 'vendor_authorized_person_placeholder'
   | 'vendor_notes'
   | 'vendor_notes_placeholder'
   | 'vendor_priority'
@@ -439,6 +441,8 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     vendor_select_country: 'Ülke Seçin',
     vendor_city: 'Şehir',
     vendor_city_placeholder: 'Örn: İstanbul, Mersin...',
+    vendor_authorized_person: 'Yetkili Kişi',
+    vendor_authorized_person_placeholder: 'Örn: Ahmet Yılmaz',
     vendor_notes: 'Hizmet ve Notlar',
     vendor_notes_placeholder: 'Hizmet tipi, güzergah, notlar...',
     vendor_priority: 'Öncelik Sırası',
@@ -741,6 +745,8 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     vendor_select_country: 'Select Country',
     vendor_city: 'City',
     vendor_city_placeholder: 'e.g. Istanbul, Mersin...',
+    vendor_authorized_person: 'Authorized Person',
+    vendor_authorized_person_placeholder: 'e.g. Ahmet Yilmaz',
     vendor_notes: 'Services and Notes',
     vendor_notes_placeholder: 'Service type, route, notes...',
     vendor_priority: 'Priority Ranking',

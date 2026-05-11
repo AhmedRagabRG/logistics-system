@@ -235,6 +235,7 @@ export interface VendorRow {
   name: string;
   country_coverage: string;
   city: string;
+  authorized_person_name: string;
   expertise_notes: string;
   contact_email: string;
   contact_phone: string;
@@ -278,6 +279,17 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
         'MENŞEİ', 'MENSEI', 'mensei', 'Mensei',
         'ORIGIN', 'origin', 'Origin City', 'origin city',
         'CITY', 'city', 'ŞEHİR', 'sehir', 'SEHIR',
+      ]);
+
+      // ── Authorized Person ──────────────────────────────────────────────
+      const authorizedPerson = getCellValue(row, [
+        'YETKİLİ', 'yetkili', 'Yetkili',
+        'YETKİLİ KİŞİ', 'yetkili kisi', 'yetkili kişi',
+        'AUTHORIZED PERSON', 'authorized person', 'Authorized Person',
+        'YETKILI', 'yetkili kisi',
+        'İHRACAT', 'ihracat', 'İTHALAT', 'ithalat',
+        'CONTACT PERSON', 'contact person', 'SATICI', 'satici',
+        'MUHATAP', 'muhatap', 'TEMSİLCİ', 'temsilci',
       ]);
 
       // ── Email ──────────────────────────────────────────────────────────
@@ -389,6 +401,7 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
         name,
         country_coverage: countryCoverage,
         city: origin,
+        authorized_person_name: authorizedPerson,
         expertise_notes: notes,
         contact_email: email,
         contact_phone: phone,

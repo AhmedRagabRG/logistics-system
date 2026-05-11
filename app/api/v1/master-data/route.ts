@@ -67,12 +67,13 @@ async function createVendor(body: unknown) {
   }
   const data = parse.data;
   const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO vendors (name, country_coverage, city, expertise_notes, priority_ranking, use_custom_margin, margin_rate, contact_email, contact_phone, telegram_chat_id, preferred_channels, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO vendors (name, country_coverage, city, authorized_person_name, expertise_notes, priority_ranking, use_custom_margin, margin_rate, contact_email, contact_phone, telegram_chat_id, preferred_channels, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name,
       data.country_coverage,
       data.city ?? null,
+      data.authorized_person_name ?? null,
       data.expertise_notes ?? null,
       data.priority_ranking,
       data.use_custom_margin ? 1 : 0,
@@ -111,6 +112,7 @@ async function updateVendor(id: number, body: unknown) {
   if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name); }
   if (data.country_coverage !== undefined) { fields.push('country_coverage = ?'); values.push(data.country_coverage); }
   if (data.city !== undefined) { fields.push('city = ?'); values.push(data.city ?? null); }
+  if (data.authorized_person_name !== undefined) { fields.push('authorized_person_name = ?'); values.push(data.authorized_person_name ?? null); }
   if (data.expertise_notes !== undefined) { fields.push('expertise_notes = ?'); values.push(data.expertise_notes ?? null); }
   if (data.priority_ranking !== undefined) { fields.push('priority_ranking = ?'); values.push(data.priority_ranking); }
   if (data.use_custom_margin !== undefined) { fields.push('use_custom_margin = ?'); values.push(data.use_custom_margin ? 1 : 0); }

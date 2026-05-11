@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS vendors (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
     country_coverage VARCHAR(255) NOT NULL,
+    city VARCHAR(128),
+    authorized_person_name VARCHAR(128),
     expertise_notes TEXT,
     priority_ranking INT NOT NULL DEFAULT 100,
     use_custom_margin BOOLEAN NOT NULL DEFAULT FALSE,

@@ -13,6 +13,7 @@ interface Vendor {
   name: string;
   country_coverage: string;
   city: string | null;
+  authorized_person_name: string | null;
   expertise_notes: string | null;
   priority_ranking: number;
   use_custom_margin: boolean;
@@ -69,6 +70,7 @@ export default function VendorsPage() {
         (v) =>
           v.name.toLowerCase().includes(q) ||
           v.country_coverage.toLowerCase().includes(q) ||
+          (v.authorized_person_name && v.authorized_person_name.toLowerCase().includes(q)) ||
           (v.contact_email && v.contact_email.toLowerCase().includes(q))
       );
     }
@@ -219,6 +221,7 @@ export default function VendorsPage() {
                   </th>
                   <th>{_t('vendor_name')}</th>
                   <th>{_t('vendor_origin')}</th>
+                  <th>{_t('vendor_authorized_person')}</th>
                   <th>{_t('vendor_notes')}</th>
                   <th>{_t('vendor_email')} / {_t('vendor_phone')}</th>
                   <th>{_t('vendor_preferred_channels')}</th>
@@ -240,6 +243,7 @@ export default function VendorsPage() {
                     <td>
                       {vendor.city ? `${vendor.country_coverage} (${vendor.city})` : vendor.country_coverage}
                     </td>
+                    <td className="text-[var(--secondary)]">{vendor.authorized_person_name}</td>
                     <td className="max-w-xs truncate text-[var(--secondary)]">{vendor.expertise_notes}</td>
                     <td className="text-[var(--secondary)]">
                       {vendor.contact_email && <div className="font-mono text-xs">{vendor.contact_email}</div>}

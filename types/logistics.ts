@@ -55,6 +55,7 @@ export interface Vendor {
   name: string;
   country_coverage: string;
   expertise_notes: string | null;
+  authorized_person_name: string | null;
   priority_ranking: number;
   use_custom_margin: boolean;
   margin_rate: number;

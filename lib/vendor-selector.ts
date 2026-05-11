@@ -83,7 +83,7 @@ export async function selectVendorsForCountry(
   const [rows] = await pool.query<
     Array<RowDataPacket & Vendor>
   >(
-    `SELECT id, name, country_coverage, expertise_notes, priority_ranking, use_custom_margin, margin_rate,
+    `SELECT id, name, country_coverage, city, authorized_person_name, expertise_notes, priority_ranking, use_custom_margin, margin_rate,
             contact_email, contact_phone, telegram_chat_id, preferred_channels, is_active, created_at, updated_at
      FROM vendors
      WHERE is_active = TRUE

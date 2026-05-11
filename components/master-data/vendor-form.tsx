@@ -11,6 +11,7 @@ interface VendorFormProps {
     name: string;
     country_coverage: string | null;
     city: string | null;
+    authorized_person_name: string | null;
     expertise_notes: string | null;
     priority_ranking: number;
     use_custom_margin: boolean;
@@ -33,6 +34,7 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
     name: initialData?.name ?? '',
     country_coverage: initialData?.country_coverage ?? '',
     city: initialData?.city ?? '',
+    authorized_person_name: initialData?.authorized_person_name ?? '',
     expertise_notes: initialData?.expertise_notes ?? '',
     priority_ranking: initialData?.priority_ranking ?? 100,
     use_custom_margin: initialData?.use_custom_margin ?? false,
@@ -109,6 +111,11 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
           <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('vendor_city')}</label>
           <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder={_t('vendor_city_placeholder')} />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)] mb-1">{_t('vendor_authorized_person')}</label>
+        <input type="text" value={form.authorized_person_name} onChange={(e) => setForm({ ...form, authorized_person_name: e.target.value })} placeholder={_t('vendor_authorized_person_placeholder')} />
       </div>
 
       <div>
