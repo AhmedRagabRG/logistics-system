@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendTelegramMessage, sendWhatsAppMessage, sendEmail } from '@/lib/sender';
 
+// Note: sendWhatsAppMessage now calls n8n webhook instead of Meta API directly
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

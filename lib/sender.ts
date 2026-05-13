@@ -2,8 +2,8 @@
  * Multi-channel message sender
  *
  * Supports:
- * - WhatsApp via Meta Cloud API
- * - Email via Outlook SMTP (or any SMTP)
+ * - WhatsApp via n8n webhook (n8n connects to WhatsApp)
+ * - Email via n8n webhook (preferred) or SMTP fallback
  * - Telegram via Bot API
  */
 
@@ -47,7 +47,7 @@ export async function sendTelegramMessage(
   }
 }
 
-// ─── WhatsApp (Meta Cloud API) ─────────────────────────────────────────────
+// ─── WhatsApp via n8n Webhook ──────────────────────────────────────────────
 
 interface WhatsAppSendResult {
   success: boolean;
@@ -59,78 +59,50 @@ export async function sendWhatsAppMessage(
   to: string,
   text: string
 ): Promise<WhatsAppSendResult> {
-  console.log(`[WHATSAPP-SEND] Attempting free-form text to: ${to}`);
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const webhookUrl = process.env.N8N_WHATSAPP_WEBHOOK_URL;
 
-  console.log(`[WHATSAPP-SEND] Config: phoneNumberId=${phoneNumberId ? 'SET' : 'MISSING'}, accessToken=${accessToken ? 'SET' : 'MISSING'}`);
-
-  if (!phoneNumberId || !accessToken) {
-    console.error(`[WHATSAPP-SEND] FAILED: Missing config`);
-    return { success: false, error: 'WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN not configured' };
+  if (!webhookUrl) {
+    return { success: false, error: 'N8N_WHATSAPP_WEBHOOK_URL not configured' };
   }
 
-  // Normalize phone number: remove non-digits, ensure country code
-  let normalizedTo = to.replace(/\D/g, '');
-  // Meta API expects numbers without + or whatsapp: prefix
-  normalizedTo = normalizedTo.replace(/^\+/, '');
+  // Normalize phone number: remove non-digits
+  const normalizedTo = to.replace(/\D/g, '');
 
-  console.log(`[WHATSAPP-SEND] Normalized number: ${normalizedTo}`);
-  console.log(`[WHATSAPP-SEND] Message body: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
+  console.log(`[WHATSAPP-N8N] Sending to n8n webhook: ${webhookUrl}, to=${normalizedTo}`);
 
   try {
-    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
-    console.log(`[WHATSAPP-SEND] POST ${url}`);
-
-    const res = await fetch(url, {
+    const res = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
         to: normalizedTo,
-        type: 'text',
-        text: { body: text },
+        message: text,
       }),
     });
 
-    const data = (await res.json()) as {
-      messages?: Array<{ id: string }>;
-      error?: { message: string; code?: number };
+    const data = (await res.json().catch(() => ({}))) as {
+      messageId?: string;
+      error?: string;
     };
 
-    console.log(`[WHATSAPP-SEND] Response status: ${res.status}`);
-    console.log(`[WHATSAPP-SEND] Response body:`, JSON.stringify(data, null, 2));
-
-    // If recipient not eligible (no 24h window), suggest using template
-    if (!res.ok || data.error) {
-      const errMsg = data.error?.message || `WhatsApp API HTTP ${res.status}`;
-      console.error(`[WHATSAPP-SEND] FAILED: ${errMsg}`);
-      if (data.error?.code === 131030 || errMsg.includes('not eligible')) {
-        return {
-          success: false,
-          error: `${errMsg}. Use sendWhatsAppTemplate() for business-initiated messages.`,
-        };
-      }
-      return { success: false, error: errMsg };
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'n8n webhook error');
+      console.error(`[WHATSAPP-N8N] Webhook error: ${res.status} ${errText}`);
+      return { success: false, error: `n8n: ${errText}` };
     }
 
-    console.log(`[WHATSAPP-SEND] SUCCESS. Message ID: ${data.messages?.[0]?.id}`);
-    return { success: true, messageId: data.messages?.[0]?.id };
+    console.log(`[WHATSAPP-N8N] Success`);
+    return { success: true, messageId: data.messageId || `n8n-${Date.now()}` };
   } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : 'WhatsApp send failed';
-    console.error(`[WHATSAPP-SEND] EXCEPTION: ${errorMsg}`);
+    const errorMsg = e instanceof Error ? e.message : 'WhatsApp n8n send failed';
+    console.error(`[WHATSAPP-N8N] Exception: ${errorMsg}`);
     return { success: false, error: errorMsg };
   }
 }
 
 /**
- * Send a WhatsApp message using an approved template.
- * REQUIRED for business-initiated conversations (e.g. vendor RFQs)
- * where the recipient hasn't messaged you in the last 24 hours.
+ * Send a WhatsApp message using an approved template via n8n.
+ * n8n handles the actual template selection and Meta API call.
  */
 export async function sendWhatsAppTemplate(
   to: string,
@@ -138,81 +110,52 @@ export async function sendWhatsAppTemplate(
   languageCode: string,
   bodyParameters: string[]
 ): Promise<WhatsAppSendResult> {
-  console.log(`[WHATSAPP-TEMPLATE] Attempting template send to: ${to}, template: ${templateName}`);
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const webhookUrl = process.env.N8N_WHATSAPP_WEBHOOK_URL;
 
-  console.log(`[WHATSAPP-TEMPLATE] Config: phoneNumberId=${phoneNumberId ? 'SET' : 'MISSING'}, accessToken=${accessToken ? 'SET' : 'MISSING'}`);
-
-  if (!phoneNumberId || !accessToken) {
-    console.error(`[WHATSAPP-TEMPLATE] FAILED: Missing config`);
-    return { success: false, error: 'WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN not configured' };
+  if (!webhookUrl) {
+    return { success: false, error: 'N8N_WHATSAPP_WEBHOOK_URL not configured' };
   }
 
-  let normalizedTo = to.replace(/\D/g, '');
-  normalizedTo = normalizedTo.replace(/^\+/, '');
+  const normalizedTo = to.replace(/\D/g, '');
 
-  console.log(`[WHATSAPP-TEMPLATE] Normalized number: ${normalizedTo}`);
-  console.log(`[WHATSAPP-TEMPLATE] Template: ${templateName}, Lang: ${languageCode}`);
-  console.log(`[WHATSAPP-TEMPLATE] Parameters:`, bodyParameters);
+  console.log(`[WHATSAPP-N8N-TEMPLATE] Sending template via n8n: template=${templateName}, to=${normalizedTo}`);
 
   try {
-    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
-    console.log(`[WHATSAPP-TEMPLATE] POST ${url}`);
-
-    const res = await fetch(url, {
+    const res = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
         to: normalizedTo,
-        type: 'template',
+        message: bodyParameters.join(' | '),
         template: {
           name: templateName,
-          language: {
-            code: languageCode,
-          },
-          components: [
-            {
-              type: 'body',
-              parameters: bodyParameters.map((param) => ({
-                type: 'text',
-                text: param,
-              })),
-            },
-          ],
+          languageCode,
+          bodyParameters,
         },
       }),
     });
 
-    const data = (await res.json()) as {
-      messages?: Array<{ id: string }>;
-      error?: { message: string };
+    const data = (await res.json().catch(() => ({}))) as {
+      messageId?: string;
+      error?: string;
     };
 
-    console.log(`[WHATSAPP-TEMPLATE] Response status: ${res.status}`);
-    console.log(`[WHATSAPP-TEMPLATE] Response body:`, JSON.stringify(data, null, 2));
-
-    if (!res.ok || data.error) {
-      const errMsg = data.error?.message || `WhatsApp Template API HTTP ${res.status}`;
-      console.error(`[WHATSAPP-TEMPLATE] FAILED: ${errMsg}`);
-      return { success: false, error: errMsg };
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'n8n webhook error');
+      console.error(`[WHATSAPP-N8N-TEMPLATE] Webhook error: ${res.status} ${errText}`);
+      return { success: false, error: `n8n: ${errText}` };
     }
 
-    console.log(`[WHATSAPP-TEMPLATE] SUCCESS. Message ID: ${data.messages?.[0]?.id}`);
-    return { success: true, messageId: data.messages?.[0]?.id };
+    console.log(`[WHATSAPP-N8N-TEMPLATE] Success`);
+    return { success: true, messageId: data.messageId || `n8n-${Date.now()}` };
   } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : 'WhatsApp template send failed';
-    console.error(`[WHATSAPP-TEMPLATE] EXCEPTION: ${errorMsg}`);
+    const errorMsg = e instanceof Error ? e.message : 'WhatsApp n8n template send failed';
+    console.error(`[WHATSAPP-N8N-TEMPLATE] Exception: ${errorMsg}`);
     return { success: false, error: errorMsg };
   }
 }
 
-// ─── Email (SMTP / Outlook) ────────────────────────────────────────────────
+// ─── Email (n8n Webhook / SMTP fallback) ───────────────────────────────────
 
 import nodemailer from 'nodemailer';
 
@@ -287,9 +230,8 @@ export interface SendMessageInput {
   message: string;
   subject?: string;
   /**
-   * For WhatsApp: REQUIRED when messaging outside the 24h customer-service window.
-   * When customer messages us first, we track it and free-form text works for 24h.
-   * After 24h, only approved templates can be sent.
+   * For WhatsApp via n8n: n8n handles the 24h window and template logic,
+   * but we pass template info so n8n can use it if needed.
    */
   whatsappTemplate?: {
     name: string;
@@ -316,14 +258,14 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
       console.log(`[SEND-MESSAGE] WhatsApp: withinWindow=${withinWindow}`);
 
       if (withinWindow) {
-        console.log(`[SEND-MESSAGE] WhatsApp: Sending FREE-FORM text (within 24h window)`);
+        console.log(`[SEND-MESSAGE] WhatsApp: Sending free-form text (within 24h window)`);
         const result = await sendWhatsAppMessage(input.contactId, input.message);
         console.log(`[SEND-MESSAGE] WhatsApp free-form result: success=${result.success}, error=${result.error || 'none'}`);
         return { success: result.success, channel: 'whatsapp', messageId: result.messageId, error: result.error };
       }
 
-      // Outside 24h window — MUST use an approved template
-      console.log(`[SEND-MESSAGE] WhatsApp: OUTSIDE 24h window, need template`);
+      // Outside 24h window — pass template info to n8n
+      console.log(`[SEND-MESSAGE] WhatsApp: OUTSIDE 24h window, passing template to n8n`);
       if (input.whatsappTemplate) {
         console.log(`[SEND-MESSAGE] WhatsApp: Using template ${input.whatsappTemplate.name}`);
         const templateResult = await sendWhatsAppTemplate(
@@ -341,12 +283,10 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
         };
       }
 
-      console.error(`[SEND-MESSAGE] WhatsApp: FAILED - no template provided and outside 24h window`);
-      return {
-        success: false,
-        channel: 'whatsapp',
-        error: 'Outside 24h messaging window. Create template in Meta Business Manager to send business-initiated messages.',
-      };
+      // No template provided — try sending anyway and let n8n handle it
+      console.log(`[SEND-MESSAGE] WhatsApp: No template provided, letting n8n handle`);
+      const result = await sendWhatsAppMessage(input.contactId, input.message);
+      return { success: result.success, channel: 'whatsapp', messageId: result.messageId, error: result.error };
     }
     case 'telegram': {
       const result = await sendTelegramMessage(input.contactId, input.message);

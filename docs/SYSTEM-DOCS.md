@@ -366,10 +366,11 @@ OPENAI_API_KEY=sk-proj-...
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=8566581202:AAFjnW2dC3V_6lgsc2R8YDtlg0cEeRMqBJM
 
-# WhatsApp Meta API
-WHATSAPP_PHONE_NUMBER_ID=your-phone-number-id
-WHATSAPP_ACCESS_TOKEN=your-permanent-access-token
-WHATSAPP_VERIFY_TOKEN=your-verify-token
+# WhatsApp via n8n Webhook
+# n8n connects to WhatsApp (Meta API or third-party) and forwards messages here.
+# This app sends WhatsApp messages by calling the n8n webhook.
+# n8n receives incoming WhatsApp messages and POSTs them to /api/webhooks/whatsapp
+N8N_WHATSAPP_WEBHOOK_URL=https://your-n8n-instance.com/webhook/send-whatsapp
 
 # Email / Outlook SMTP
 SMTP_HOST=smtp.office365.com
@@ -396,11 +397,13 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ```
 
-### WhatsApp (Meta)
-In Meta Developer Dashboard:
-1. WhatsApp → Configuration → Webhook URL: `https://yourdomain.com/api/webhooks/whatsapp`
-2. Verify Token: matches `WHATSAPP_VERIFY_TOKEN`
-3. Subscribe to `messages` webhook field
+### WhatsApp (via n8n)
+1. In n8n, create a workflow that connects to WhatsApp (Meta API, WhatsApp Business API, or third-party)
+2. n8n receives incoming WhatsApp messages → forwards them to:
+   `POST https://yourdomain.com/api/webhooks/whatsapp`
+3. This app sends WhatsApp messages by calling:
+   `POST {N8N_WHATSAPP_WEBHOOK_URL}`
+4. Configure `N8N_WHATSAPP_WEBHOOK_URL` in `.env.local`
 
 ### Email
 Configure your email provider (SendGrid, Postmark, AWS SES) to POST parsed emails to:
@@ -534,8 +537,8 @@ Quote from DE 10 to SI 10, weight 25000 kg
 
 ### Vendors not receiving messages
 - Check `.env.local` has correct credentials:
-  - WhatsApp: `WHATSAPP_PHONE_NUMBER_ID` + `WHATSAPP_ACCESS_TOKEN`
-  - Email: `SMTP_USER` + `SMTP_PASS` (must be app password, not regular password)
+  - WhatsApp: `N8N_WHATSAPP_WEBHOOK_URL` must be set (n8n handles the WhatsApp connection)
+  - Email: `N8N_EMAIL_WEBHOOK_URL` (preferred) or `SMTP_USER` + `SMTP_PASS`
   - Telegram: `TELEGRAM_BOT_TOKEN`
 - Check `system_logs` table for `vendor_rfq_send_failed` events
 
@@ -555,7 +558,7 @@ Quote from DE 10 to SI 10, weight 25000 kg
 | `lib/pricing.ts` | Route pricing lookup |
 | `lib/geo.ts` | Postal code → region/country resolution |
 | `lib/vendor-selector.ts` | Vendor matching by country coverage |
-| `lib/sender.ts` | WhatsApp Meta API + Email SMTP + Telegram Bot API |
+| `lib/sender.ts` | WhatsApp via n8n webhook + Email via n8n/SMTP + Telegram Bot API |
 | `lib/db-queries.ts` | Database query helpers |
 | `lib/audit.ts` | Event logging |
 | `app/api/webhooks/telegram/route.ts` | Telegram bot webhook |

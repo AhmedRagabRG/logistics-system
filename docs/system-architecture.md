@@ -243,18 +243,16 @@ Is critical data missing?
    AUTH_TOKEN=your-twilio-auth-token
    ```
 
-### WhatsApp (Meta Business API)
+### WhatsApp (via n8n)
 
-1. Create app at [Meta for Developers](https://developers.facebook.com/)
-2. Add WhatsApp product
-3. Configure webhook:
-   ```
-   Callback URL: https://yourdomain.com/api/webhooks/whatsapp
-   Verify Token: your-whatsapp-verify-token
-   ```
+1. In n8n, create a workflow that connects to WhatsApp (Meta API, WhatsApp Business API, or third-party)
+2. n8n receives incoming WhatsApp messages → forwards them to:
+   `POST https://yourdomain.com/api/webhooks/whatsapp`
+3. This app sends WhatsApp messages by calling:
+   `POST {N8N_WHATSAPP_WEBHOOK_URL}`
 4. Set in `.env.local`:
    ```
-   WHATSAPP_VERIFY_TOKEN=your-whatsapp-verify-token
+   N8N_WHATSAPP_WEBHOOK_URL=https://your-n8n-instance.com/webhook/send-whatsapp
    ```
 
 ### Telegram Bot
@@ -467,8 +465,8 @@ AUTH_TOKEN=your-webhook-auth-token
 # OpenAI (REQUIRED for automation)
 OPENAI_API_KEY=sk-your-openai-key
 
-# WhatsApp Verification
-WHATSAPP_VERIFY_TOKEN=your-verify-token
+# WhatsApp via n8n
+N8N_WHATSAPP_WEBHOOK_URL=https://your-n8n-instance.com/webhook/send-whatsapp
 
 # App URL
 NEXT_PUBLIC_APP_URL=https://yourdomain.com

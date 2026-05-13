@@ -550,7 +550,7 @@ export async function getSystemStatus(): Promise<SystemStatusData> {
   };
 
   const config_status = {
-    whatsapp_configured: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+    whatsapp_configured: !!process.env.N8N_WHATSAPP_WEBHOOK_URL,
     telegram_configured: !!process.env.TELEGRAM_BOT_TOKEN,
     email_n8n_configured: !!process.env.N8N_EMAIL_WEBHOOK_URL,
     email_smtp_configured: !!process.env.SMTP_HOST && !!process.env.SMTP_USER,
@@ -564,7 +564,7 @@ export async function getSystemStatus(): Promise<SystemStatusData> {
   if (table_counts.postal_codes === 0) warnings.push('No postal codes found. Import postal code data in Master Data > Import.');
   if (table_counts.active_countries === 0) warnings.push('No active countries found. Add countries in Master Data > Countries.');
   if (table_counts.exchange_rates === 0) warnings.push('No exchange rates found. Add rates in Master Data > Exchange Rates.');
-  if (!config_status.whatsapp_configured) warnings.push('WhatsApp not configured. Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID in .env.local.');
+  if (!config_status.whatsapp_configured) warnings.push('WhatsApp not configured. Set N8N_WHATSAPP_WEBHOOK_URL in .env.local (n8n handles the WhatsApp connection).');
   if (!config_status.telegram_configured) warnings.push('Telegram not configured. Set TELEGRAM_BOT_TOKEN in .env.local.');
   if (!config_status.email_n8n_configured && !config_status.email_smtp_configured) warnings.push('Email not configured. Set N8N_EMAIL_WEBHOOK_URL (preferred) or SMTP_HOST/SMTP_USER in .env.local.');
   if (!config_status.openai_configured) warnings.push('OpenAI not configured. Set OPENAI_API_KEY in .env.local.');

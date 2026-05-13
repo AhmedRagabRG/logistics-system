@@ -28,162 +28,96 @@ async function isVendorPhone(phoneNumber: string): Promise<boolean> {
 }
 
 /**
- * WhatsApp Webhook — Meta Cloud API format
+ * WhatsApp Webhook — receives messages forwarded by n8n
+ *
+ * n8n connects to WhatsApp (via Meta API, WhatsApp Business API, or third-party),
+ * receives incoming messages, then POSTs a simplified payload here.
+ *
+ * Expected body from n8n:
+ * {
+ *   from: "PHONE_NUMBER",           // required: sender phone number
+ *   text: "MESSAGE_BODY",           // required: message text
+ *   profile_name: "Sender Name"     // optional: contact name from WhatsApp
+ * }
+ *
+ * We MUST respond with HTTP 200.
+ * n8n retries based on its own workflow configuration.
  *
  * IMPORTANT: This webhook receives messages from BOTH customers AND vendors.
  * We MUST distinguish them:
  * - Customers → processIncomingRequest (creates quotes)
  * - Vendors → processVendorReply (updates RFQ assignments)
- *
- * Meta sends webhook events in this nested structure:
- * {
- *   object: "whatsapp_business_account",
- *   entry: [{
- *     changes: [{
- *       value: {
- *         messaging_product: "whatsapp",
- *         metadata: { display_phone_number, phone_number_id },
- *         contacts: [{ profile: { name }, wa_id }],
- *         messages: [{
- *           from: "PHONE_NUMBER",
- *           id: "wamid.ID",
- *           timestamp: "1234567890",
- *           text: { body: "MESSAGE_BODY" },
- *           type: "text"
- *         }]
- *       }
- *     }]
- *   }]
- * }
- *
- * We MUST respond with HTTP 200 within ~20 seconds.
- * Meta retries webhooks that return non-2xx.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log(`[WHATSAPP-WEBHOOK] Received POST. Body keys:`, Object.keys(body));
+    console.log(`[WHATSAPP-WEBHOOK] Received POST from n8n. Body keys:`, Object.keys(body));
 
-    // Try Meta Cloud API nested format first
-    const entry = body.entry?.[0];
-    const change = entry?.changes?.[0];
-    const value = change?.value;
+    // Support flexible field names from n8n
+    const fromNumber = body.from || body.sender || body.wa_id || body.phone || '';
+    const messageText = body.text || body.message || body.body || '';
+    const profileName = body.profile_name || body.name || body.profile?.name || null;
 
-    console.log(`[WHATSAPP-WEBHOOK] Entry: ${body.entry ? 'YES' : 'NO'}, Changes: ${entry?.changes ? 'YES' : 'NO'}, Messages: ${value?.messages ? 'YES' : 'NO'}`);
-
-    // Meta sends many event types. Only process actual messages.
-    // Status updates (delivered, read, failed) have 'statuses' not 'messages'.
-    if (!value?.messages || !Array.isArray(value.messages)) {
-      console.log(`[WHATSAPP-WEBHOOK] No messages in payload. Event type: ${Object.keys(value || {}).join(', ') || 'unknown'}. Returning 200.`);
-      return NextResponse.json({ success: true, ignored: true });
+    if (!fromNumber || !messageText) {
+      console.log(`[WHATSAPP-WEBHOOK] Missing from or text. from=${fromNumber}, text=${messageText}`);
+      return NextResponse.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'Missing from or text' } },
+        { status: 400 }
+      );
     }
 
-    console.log(`[WHATSAPP-WEBHOOK] Processing ${value.messages.length} message(s) in Meta format`);
+    console.log(`[WHATSAPP-WEBHOOK] Message from=${fromNumber}, text="${String(messageText).substring(0, 50)}..."`);
 
-    // Meta format — process each message
-    const contacts = value.contacts || [];
-    const contactMap = new Map<string, string>();
-    for (const c of contacts) {
-      const phone = c.wa_id || c.profile?.wa_id;
-      const name = c.profile?.name;
-      if (phone && name) contactMap.set(phone, name);
-    }
+    const normalizedContact = normalizeContactId(`whatsapp:+${fromNumber}`, 'whatsapp');
+    console.log(`[WHATSAPP-WEBHOOK] Normalized contact: ${normalizedContact}, Name: ${profileName || 'unknown'}`);
 
-    for (const msg of value.messages) {
-      const fromNumber = msg.from;
-      const msgType = msg.type;
-      let messageText = '';
+    // CRITICAL: Check if sender is a VENDOR or a CUSTOMER
+    console.log(`[WHATSAPP-WEBHOOK] Checking if sender is a vendor...`);
+    const senderIsVendor = await isVendorPhone(fromNumber);
+    console.log(`[WHATSAPP-WEBHOOK] Sender is vendor: ${senderIsVendor}`);
 
-      if (msgType === 'text' && msg.text?.body) {
-        messageText = msg.text.body;
-      } else if (msgType === 'image' && msg.image?.caption) {
-        messageText = msg.image.caption;
-      }
-      // Ignore other types (audio, video, document, etc.)
+    if (senderIsVendor) {
+      // VENDOR REPLY: update RFQ, don't create a new quote!
+      console.log(`[WHATSAPP-WEBHOOK] Processing as VENDOR REPLY`);
+      processVendorReply(normalizedContact, String(messageText)).then((result) => {
+        console.log(`[WHATSAPP-WEBHOOK] Vendor reply processed: matched=${result.matched}, message=${result.message}`);
+      }).catch((err) => {
+        console.error(`[WHATSAPP-WEBHOOK] processVendorReply error:`, err);
+      });
+    } else {
+      // CUSTOMER MESSAGE: create quote
+      console.log(`[WHATSAPP-WEBHOOK] Processing as CUSTOMER MESSAGE`);
 
-      console.log(`[WHATSAPP-WEBHOOK] Message from=${fromNumber}, type=${msgType}, text="${messageText.substring(0, 50)}..."`);
+      // Track that customer messaged us — opens 24h free-form reply window
+      console.log(`[WHATSAPP-WEBHOOK] Tracking 24h window for ${normalizedContact}`);
+      trackCustomerMessageWindow(normalizedContact, 'whatsapp').then(() => {
+        console.log(`[WHATSAPP-WEBHOOK] Window tracked successfully for ${normalizedContact}`);
+      }).catch((err) => {
+        console.error(`[WHATSAPP-WEBHOOK] Window tracking error:`, err);
+      });
 
-      if (!messageText || !fromNumber) {
-        console.log(`[WHATSAPP-WEBHOOK] Skipping message: missing text or from number`);
-        continue;
-      }
-
-      const profileName = contactMap.get(fromNumber) || null;
-      const normalizedContact = normalizeContactId(`whatsapp:+${fromNumber}`, 'whatsapp');
-
-      console.log(`[WHATSAPP-WEBHOOK] Normalized contact: ${normalizedContact}, Name: ${profileName || 'unknown'}`);
-
-      // CRITICAL: Check if sender is a VENDOR or a CUSTOMER
-      console.log(`[WHATSAPP-WEBHOOK] Checking if sender is a vendor...`);
-      const senderIsVendor = await isVendorPhone(fromNumber);
-      console.log(`[WHATSAPP-WEBHOOK] Sender is vendor: ${senderIsVendor}`);
-
-      if (senderIsVendor) {
-        // VENDOR REPLY: update RFQ, don't create a new quote!
-        console.log(`[WHATSAPP-WEBHOOK] Processing as VENDOR REPLY`);
-        processVendorReply(normalizedContact, String(messageText)).then((result) => {
-          console.log(`[WHATSAPP-WEBHOOK] Vendor reply processed: matched=${result.matched}, message=${result.message}`);
-        }).catch((err) => {
-          console.error(`[WHATSAPP-WEBHOOK] processVendorReply error:`, err);
-        });
-      } else {
-        // CUSTOMER MESSAGE: create quote
-        console.log(`[WHATSAPP-WEBHOOK] Processing as CUSTOMER MESSAGE`);
-
-        // Track that customer messaged us — opens 24h free-form reply window
-        console.log(`[WHATSAPP-WEBHOOK] Tracking 24h window for ${normalizedContact}`);
-        trackCustomerMessageWindow(normalizedContact, 'whatsapp').then(() => {
-          console.log(`[WHATSAPP-WEBHOOK] Window tracked successfully for ${normalizedContact}`);
-        }).catch((err) => {
-          console.error(`[WHATSAPP-WEBHOOK] Window tracking error:`, err);
-        });
-
-        // Fire-and-forget: don't await, just return 200 to Meta
-        console.log(`[WHATSAPP-WEBHOOK] Calling processIncomingRequest...`);
-        processIncomingRequest({
-          raw_message: String(messageText),
-          customer_name: profileName,
-          customer_contact: normalizedContact,
-          channel: 'whatsapp',
-          handling_mode: 'auto',
-        }).then((results) => {
-          const resultList = Array.isArray(results) ? results : [results];
-          for (const r of resultList) {
-            console.log(`[WHATSAPP-WEBHOOK] Quote created: quote_id=${r.quote_id}, status=${r.status}`);
-          }
-        }).catch((err) => {
-          console.error(`[WHATSAPP-WEBHOOK] processIncomingRequest error:`, err);
-        });
-      }
+      // Fire-and-forget: don't await, just return 200 to n8n quickly
+      console.log(`[WHATSAPP-WEBHOOK] Calling processIncomingRequest...`);
+      processIncomingRequest({
+        raw_message: String(messageText),
+        customer_name: profileName,
+        customer_contact: normalizedContact,
+        channel: 'whatsapp',
+        handling_mode: 'auto',
+      }).then((results) => {
+        const resultList = Array.isArray(results) ? results : [results];
+        for (const r of resultList) {
+          console.log(`[WHATSAPP-WEBHOOK] Quote created: quote_id=${r.quote_id}, status=${r.status}`);
+        }
+      }).catch((err) => {
+        console.error(`[WHATSAPP-WEBHOOK] processIncomingRequest error:`, err);
+      });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('WhatsApp webhook error:', error);
-    // Still return 200 so Meta doesn't retry endlessly
+    // Still return 200 so n8n doesn't retry endlessly (unless configured to)
     return NextResponse.json({ success: true });
   }
-}
-
-/**
- * WhatsApp webhook verification (Meta Cloud API)
- * GET /api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
- */
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const mode = searchParams.get('hub.mode');
-  const verifyToken = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
-
-  if (mode === 'subscribe') {
-    const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN || 'default-verify-token';
-    if (verifyToken === expectedToken) {
-      return new NextResponse(challenge, { status: 200 });
-    }
-  }
-
-  return NextResponse.json(
-    { success: false, error: { code: 'FORBIDDEN', message: 'Verification failed' } },
-    { status: 403 }
-  );
 }
