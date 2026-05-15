@@ -18,6 +18,7 @@ export type TranslationKey =
   | 'nav_vendors'
   | 'nav_pricing'
   | 'nav_settings'
+  | 'nav_admins'
   | 'nav_exchange_rates'
   | 'nav_import'
   | 'nav_countries'
@@ -344,6 +345,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     nav_vendors: 'Tedarikçiler',
     nav_pricing: 'Rota Fiyatları',
     nav_settings: 'Sistem Ayarları',
+    nav_admins: 'Yöneticiler',
     nav_exchange_rates: 'Döviz Kurları',
     nav_import: 'Veri İçe Aktar',
     nav_operations: 'Operasyonlar',
@@ -648,6 +650,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     nav_vendors: 'Vendors',
     nav_pricing: 'Route Pricing',
     nav_settings: 'System Settings',
+    nav_admins: 'Admins',
     nav_exchange_rates: 'Exchange Rates',
     nav_import: 'Import Data',
     nav_operations: 'Operations',

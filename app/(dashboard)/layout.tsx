@@ -34,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         { href: '/master-data/pricing', label: t('nav_pricing', locale) },
         { href: '/master-data/countries', label: t('nav_countries', locale) },
         { href: '/master-data/settings', label: t('nav_settings', locale) },
+        { href: '/master-data/admins', label: t('nav_admins', locale) },
         { href: '/master-data/import', label: t('nav_import', locale) },
         { href: '/master-data/test-messaging', label: t('nav_test_messaging', locale) },
       ],
