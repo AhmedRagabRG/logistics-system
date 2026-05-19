@@ -586,7 +586,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     settings_mode_description: 'Otomatik: Teklifler doğrudan gönderilir. Düşük Güven: Sadece belirsiz teklifler incelenir. Manuel: Tüm teklifler onay gerektirir.',
     aria_switch_language: 'Dili Değiştir',
     unknown_error: 'Bilinmeyen hata',
-    login_subtitle: 'Yönetici hesabınızla giriş yapın',
+    login_subtitle: 'Supet Yönetim Paneli',
     nav_unmatched_replies: 'Eşleşmeyen Yanıtlar',
     unmatched_replies_title: 'Eşleşmeyen Tedarikçi Yanıtları',
     unmatched_replies_empty: 'Henüz eşleşmeyen tedarikçi yanıtı bulunmamaktadır.',
