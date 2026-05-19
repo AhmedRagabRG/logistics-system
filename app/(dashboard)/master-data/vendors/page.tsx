@@ -6,7 +6,8 @@ import Pagination from '@/components/ui/pagination';
 import ScrollableTable from '@/components/ui/scrollable-table';
 import SearchInput from '@/components/ui/search-input';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
-import { useDashboardT } from '@/lib/i18n-client';
+import { useDashboardT, useDashboardLocaleContext } from '@/lib/i18n-client';
+import { useCountries } from '@/hooks/use-countries';
 
 interface Vendor {
   id: number;
@@ -29,6 +30,9 @@ const ITEMS_PER_PAGE = 20;
 
 export default function VendorsPage() {
   const _t = useDashboardT();
+  const locale = useDashboardLocaleContext();
+  const { countries } = useCountries(locale);
+
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +66,19 @@ export default function VendorsPage() {
     fetchVendors();
   }, [fetchVendors]);
 
+  const getCountryLabel = useCallback(
+    (raw: string) => {
+      const matched = countries.find(
+        (c) =>
+          c.name_en.toLowerCase() === raw.toLowerCase() ||
+          c.name_tr.toLowerCase() === raw.toLowerCase() ||
+          c.code.toLowerCase() === raw.toLowerCase()
+      );
+      return matched ? (locale === 'tr' ? matched.name_tr : matched.name_en) : raw;
+    },
+    [countries, locale]
+  );
+
   const filteredVendors = useMemo(() => {
     let result = vendors;
     if (search.trim()) {
@@ -69,7 +86,9 @@ export default function VendorsPage() {
       result = result.filter(
         (v) =>
           v.name.toLowerCase().includes(q) ||
+          getCountryLabel(v.country_coverage).toLowerCase().includes(q) ||
           v.country_coverage.toLowerCase().includes(q) ||
+          (v.city && v.city.toLowerCase().includes(q)) ||
           (v.authorized_person_name && v.authorized_person_name.toLowerCase().includes(q)) ||
           (v.contact_email && v.contact_email.toLowerCase().includes(q))
       );
@@ -78,7 +97,7 @@ export default function VendorsPage() {
       result = result.filter((v) => (statusFilter === 'active' ? v.is_active : !v.is_active));
     }
     return result;
-  }, [vendors, search, statusFilter]);
+  }, [vendors, search, statusFilter, getCountryLabel]);
 
   const {
     selectedIds,
@@ -241,7 +260,9 @@ export default function VendorsPage() {
                     </td>
                     <td className="font-medium">{vendor.name}</td>
                     <td>
-                      {vendor.city ? `${vendor.country_coverage} (${vendor.city})` : vendor.country_coverage}
+                      {vendor.city
+                        ? `${getCountryLabel(vendor.country_coverage)} (${vendor.city})`
+                        : getCountryLabel(vendor.country_coverage)}
                     </td>
                     <td className="text-[var(--secondary)]">{vendor.authorized_person_name}</td>
                     <td className="max-w-xs truncate text-[var(--secondary)]">{vendor.expertise_notes}</td>

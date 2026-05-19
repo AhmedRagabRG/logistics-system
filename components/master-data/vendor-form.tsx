@@ -30,9 +30,20 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
   const locale = useDashboardLocaleContext();
   const { countries, loading: countriesLoading } = useCountries(locale);
 
+  // Normalize stored country_coverage to a value that matches one of the <option> values.
+  const matchedCountry = countries.find(
+    (c) =>
+      c.name_en.toLowerCase() === (initialData?.country_coverage ?? '').toLowerCase() ||
+      c.name_tr.toLowerCase() === (initialData?.country_coverage ?? '').toLowerCase() ||
+      c.code.toLowerCase() === (initialData?.country_coverage ?? '').toLowerCase()
+  );
+  const normalizedCountryCoverage = matchedCountry
+    ? (locale === 'tr' ? matchedCountry.name_tr : matchedCountry.name_en)
+    : (initialData?.country_coverage ?? '');
+
   const [form, setForm] = useState({
     name: initialData?.name ?? '',
-    country_coverage: initialData?.country_coverage ?? '',
+    country_coverage: normalizedCountryCoverage,
     city: initialData?.city ?? '',
     authorized_person_name: initialData?.authorized_person_name ?? '',
     expertise_notes: initialData?.expertise_notes ?? '',

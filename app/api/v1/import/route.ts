@@ -3,7 +3,7 @@ import pool from '@/lib/db';
 import { requireAdminSession } from '@/lib/admin-auth';
 import { parsePostalCodes, parseRoutePricing, parseVendors, parseCountries } from '@/lib/import-parsers';
 import { logAuthEvent } from '@/lib/audit';
-import type { ResultSetHeader } from 'mysql2/promise';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminSession(request);
@@ -75,6 +75,20 @@ export async function POST(request: NextRequest) {
       }
 
       case 'vendors': {
+        // Load countries from DB for normalization
+        const [countryRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT code, name_en, name_tr FROM countries'
+        );
+        const dbCountries = countryRows as Array<{ code: string; name_en: string; name_tr: string }>;
+
+        const findCountry = (val: string) =>
+          dbCountries.find(
+            (c) =>
+              c.name_en.toLowerCase() === val.toLowerCase() ||
+              c.name_tr.toLowerCase() === val.toLowerCase() ||
+              c.code.toLowerCase() === val.toLowerCase()
+          );
+
         const rows = parseVendors(buffer);
         // Debug: log first 3 rows to help diagnose import issues
         console.log('[IMPORT DEBUG] Parsed', rows.length, 'vendor rows');
@@ -91,11 +105,26 @@ export async function POST(request: NextRequest) {
         }
         for (const row of rows) {
           try {
+            // Normalize country / city
+            let countryCoverage = row.country_coverage;
+            let city = row.city;
+
+            const matchedCountry = findCountry(countryCoverage);
+            if (matchedCountry) {
+              countryCoverage = matchedCountry.name_en;
+            } else if (city) {
+              const cityAsCountry = findCountry(city);
+              if (cityAsCountry) {
+                countryCoverage = cityAsCountry.name_en;
+                city = '';
+              }
+            }
+
             await pool.execute<ResultSetHeader>(
               `INSERT INTO vendors (name, country_coverage, city, authorized_person_name, expertise_notes, contact_email, contact_phone, telegram_chat_id, preferred_channels, use_custom_margin, margin_rate, is_active)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
                ON DUPLICATE KEY UPDATE country_coverage = VALUES(country_coverage), city = VALUES(city), authorized_person_name = VALUES(authorized_person_name), expertise_notes = VALUES(expertise_notes), contact_email = VALUES(contact_email), contact_phone = VALUES(contact_phone), telegram_chat_id = VALUES(telegram_chat_id), preferred_channels = VALUES(preferred_channels), use_custom_margin = VALUES(use_custom_margin), margin_rate = VALUES(margin_rate)`,
-              [row.name, row.country_coverage, row.city || null, row.authorized_person_name || null, row.expertise_notes || null, row.contact_email || null, row.contact_phone || null, row.telegram_chat_id || null, JSON.stringify(row.preferred_channels), row.use_custom_margin ? 1 : 0, row.margin_rate]
+              [row.name, countryCoverage, city || null, row.authorized_person_name || null, row.expertise_notes || null, row.contact_email || null, row.contact_phone || null, row.telegram_chat_id || null, JSON.stringify(row.preferred_channels), row.use_custom_margin ? 1 : 0, row.margin_rate]
             );
             inserted++;
           } catch {
