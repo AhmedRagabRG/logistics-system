@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { requireAdminSession } from '@/lib/admin-auth';
-import { parsePostalCodes, parseRoutePricing, parseVendors } from '@/lib/import-parsers';
+import { parsePostalCodes, parseRoutePricing, parseVendors, parseCountries } from '@/lib/import-parsers';
 import { logAuthEvent } from '@/lib/audit';
 import type { ResultSetHeader } from 'mysql2/promise';
 
@@ -105,9 +105,27 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'countries': {
+        const rows = parseCountries(buffer);
+        for (const row of rows) {
+          try {
+            await pool.execute<ResultSetHeader>(
+              `INSERT INTO countries (code, name_en, name_tr, is_active)
+               VALUES (?, ?, ?, TRUE)
+               ON DUPLICATE KEY UPDATE name_en = VALUES(name_en), name_tr = VALUES(name_tr)`,
+              [row.code, row.name_en, row.name_tr]
+            );
+            inserted++;
+          } catch {
+            skipped++;
+          }
+        }
+        break;
+      }
+
       default:
         return NextResponse.json(
-          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid import type. Use postal_codes, route_pricing, or vendors' } },
+          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid import type. Use postal_codes, route_pricing, vendors, or countries' } },
           { status: 400 }
         );
     }

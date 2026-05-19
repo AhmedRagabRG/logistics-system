@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useDashboardT } from '@/lib/i18n-client';
 import * as xlsx from 'xlsx';
 
-type ImportType = 'postal_codes' | 'route_pricing' | 'vendors';
+type ImportType = 'postal_codes' | 'route_pricing' | 'vendors' | 'countries';
 
 interface ColumnDef {
   key: string;
@@ -71,11 +71,31 @@ const REQUIREMENTS: Record<
       'J — Reverse Sea Price': '1900',
     },
   },
+  countries: {
+    sheetNote:
+      'First sheet only. Column headers must match exactly (Turkish or English aliases accepted). Duplicate country codes are skipped.',
+    columns: [
+      { key: 'CODE', label: 'ISO Country Code', required: true, alternatives: ['code', 'KOD', 'kod', 'ULKE KODU', 'ulke kodu'] },
+      { key: 'NAME_EN', label: 'English Name', required: true, alternatives: ['name_en', 'English Name', 'english name', 'INGILIZCE AD', 'ingilizce ad'] },
+      { key: 'NAME_TR', label: 'Turkish Name', required: true, alternatives: ['name_tr', 'Turkish Name', 'turkish name', 'TURKCE AD', 'turkce ad', 'TÜRKÇE AD', 'türkçe ad'] },
+    ],
+    example: {
+      CODE: 'DE',
+      NAME_EN: 'Germany',
+      NAME_TR: 'Almanya',
+    },
+  },
   vendors: {
     sheetNote:
       'Each sheet represents one country/region. Skip the sheet named "ANASAYFA". Turkish column headers are expected.',
     columns: [
       { key: 'FİRMA', label: 'Company Name', required: true, alternatives: ['FIRMA'] },
+      {
+        key: 'ÜLKE',
+        label: 'Country (overrides sheet name; must match country names in the database)',
+        required: false,
+        alternatives: ['ULKE', 'COUNTRY', 'country', 'Ülke'],
+      },
       {
         key: 'MENŞEİ',
         label: 'Origin City (stored separately from country)',
@@ -108,6 +128,7 @@ const REQUIREMENTS: Record<
     ],
     example: {
       FİRMA: 'ABC Lojistik',
+      ÜLKE: 'Türkiye',
       'MENŞEİ': 'İstanbul',
       'YETKİLİ KİŞİ': 'Ahmet Yılmaz',
       'MAİL İHRACAT / İTHALAT': 'info@abc.com',
@@ -133,6 +154,7 @@ export default function ImportPage() {
     { value: 'postal_codes', label: _t('import_option_postal_codes') },
     { value: 'route_pricing', label: _t('import_option_route_pricing') },
     { value: 'vendors', label: _t('import_option_vendors') },
+    { value: 'countries', label: _t('import_option_countries') },
   ];
 
   const req = REQUIREMENTS[type];

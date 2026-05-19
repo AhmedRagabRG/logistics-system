@@ -186,6 +186,7 @@ export type TranslationKey =
   | 'import_option_postal_codes'
   | 'import_option_route_pricing'
   | 'import_option_vendors'
+  | 'import_option_countries'
   // Pagination
   | 'page'
   | 'of'
@@ -504,6 +505,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     import_option_postal_codes: 'Posta Kodları',
     import_option_route_pricing: 'Rota Fiyatları',
     import_option_vendors: 'Tedarikçiler',
+    import_option_countries: 'Ülkeler',
     page: 'Sayfa',
     of: '/',
     records: 'kayıt',
@@ -809,6 +811,7 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     import_option_postal_codes: 'Postal Codes',
     import_option_route_pricing: 'Route Pricing',
     import_option_vendors: 'Vendors',
+    import_option_countries: 'Countries',
     page: 'Page',
     of: 'of',
     records: 'records',

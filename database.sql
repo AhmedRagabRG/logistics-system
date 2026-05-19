@@ -4,11 +4,11 @@
 -- Run: mysql -u root -p < database.sql
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS logistics_dashboard
+CREATE DATABASE IF NOT EXISTS supet_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE logistics_dashboard;
+USE supet_db;
 
 -- ============================================================
 -- 1. AUTHENTICATION & AUDIT TABLES

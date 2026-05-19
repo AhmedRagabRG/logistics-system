@@ -274,6 +274,13 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
       }
       if (!name) continue;
 
+      // ── Country ────────────────────────────────────────────────────────
+      const country = getCellValue(row, [
+        'ÜLKE', 'ülke', 'ULKE', 'ulke', 'Ülke',
+        'COUNTRY', 'country', 'Country',
+        'ULKE KODU', 'ülke kodu', 'COUNTRY CODE', 'country code',
+      ]);
+
       // ── City / Origin ──────────────────────────────────────────────────
       const origin = getCellValue(row, [
         'MENŞEİ', 'MENSEI', 'mensei', 'Mensei',
@@ -376,7 +383,7 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
         'kanallar', 'CHANNELS', 'channels',
       ]);
 
-      const countryCoverage = toTitleCase(cleanSheetName(sheetName));
+      const countryCoverage = country || toTitleCase(cleanSheetName(sheetName));
       const useCustomMargin =
         useCustomMarginRaw === 'yes' ||
         useCustomMarginRaw === 'true' ||
@@ -411,6 +418,44 @@ export function parseVendors(buffer: Buffer): VendorRow[] {
         margin_rate: marginRate,
       });
     }
+  }
+
+  return rows;
+}
+
+// ─── Countries ─────────────────────────────────────────────────────────────
+
+export interface CountryRow {
+  code: string;
+  name_en: string;
+  name_tr: string;
+}
+
+export function parseCountries(buffer: Buffer): CountryRow[] {
+  const wb = xlsx.read(buffer, { type: 'buffer' });
+  const sheetName = wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const data = xlsx.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+
+  const rows: CountryRow[] = [];
+
+  for (const row of data) {
+    const code = getCellValue(row, [
+      'CODE', 'code', 'KOD', 'kod', 'ULKE KODU', 'ulke kodu', 'ÜLKE KODU', 'ülke kodu',
+    ]).toUpperCase().trim();
+
+    const nameEn = getCellValue(row, [
+      'NAME_EN', 'name_en', 'English Name', 'english name', 'INGILIZCE AD', 'ingilizce ad', 'İNGİLİZCE AD', 'ingilizce ad',
+    ]).trim();
+
+    const nameTr = getCellValue(row, [
+      'NAME_TR', 'name_tr', 'Turkish Name', 'turkish name', 'TURKCE AD', 'turkce ad', 'TÜRKÇE AD', 'türkçe ad',
+    ]).trim();
+
+    if (!code || !nameEn || !nameTr) continue;
+    if (code.length !== 2) continue; // ISO country codes are 2 letters
+
+    rows.push({ code, name_en: nameEn, name_tr: nameTr });
   }
 
   return rows;
