@@ -96,6 +96,7 @@ export const systemSettingsSchema = z.object({
   vendor_msg_email: z.string().max(5000).optional().nullable(),
   vendor_msg_telegram: z.string().max(5000).optional().nullable(),
   vendor_msg_whatsapp: z.string().max(5000).optional().nullable(),
+  is_paused: z.coerce.boolean().default(false),
 });
 
 export const exchangeRateSchema = z.object({
@@ -121,7 +122,7 @@ export const rfqCreateSchema = z.object({
 export const rfqVendorResponseSchema = z.object({
   vendor_id: z.number().int().positive(),
   price: z.number().positive(),
-  currency: z.string().length(3).default('TRY'),
+  currency: z.string().length(3).optional().nullable(),
 });
 
 export const rfqUpdateSchema = z.object({

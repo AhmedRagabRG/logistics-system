@@ -278,6 +278,7 @@ async function updateSettings(body: unknown) {
   if (data.vendor_msg_email !== undefined) { fields.push('vendor_msg_email = ?'); values.push(data.vendor_msg_email ?? null); }
   if (data.vendor_msg_telegram !== undefined) { fields.push('vendor_msg_telegram = ?'); values.push(data.vendor_msg_telegram ?? null); }
   if (data.vendor_msg_whatsapp !== undefined) { fields.push('vendor_msg_whatsapp = ?'); values.push(data.vendor_msg_whatsapp ?? null); }
+  if (data.is_paused !== undefined) { fields.push('is_paused = ?'); values.push(data.is_paused ? 1 : 0); }
 
   if (fields.length === 0) {
     return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'No fields to update' } }, { status: 400 });
@@ -287,8 +288,8 @@ async function updateSettings(body: unknown) {
   const [existing] = await pool.execute<Array<RowDataPacket>>('SELECT id FROM system_settings ORDER BY id DESC LIMIT 1');
   if (!existing || existing.length === 0) {
     await pool.execute(
-      `INSERT INTO system_settings (master_logic_toggle, default_currency, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [data.master_logic_toggle ?? 'manual_approval', data.default_currency ?? 'TRY', data.oversize_weight_threshold_tons ?? 22.00, data.waiting_period ?? '30m', data.global_markup_percent ?? 0, data.vendor_msg_email ?? null, data.vendor_msg_telegram ?? null, data.vendor_msg_whatsapp ?? null]
+      `INSERT INTO system_settings (master_logic_toggle, default_currency, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp, is_paused) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [data.master_logic_toggle ?? 'manual_approval', data.default_currency ?? 'TRY', data.oversize_weight_threshold_tons ?? 22.00, data.waiting_period ?? '30m', data.global_markup_percent ?? 0, data.vendor_msg_email ?? null, data.vendor_msg_telegram ?? null, data.vendor_msg_whatsapp ?? null, data.is_paused ? 1 : 0]
     );
   } else {
     values.push(existing[0].id);

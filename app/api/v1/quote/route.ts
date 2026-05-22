@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthToken, extractBearerToken } from '@/lib/auth-token';
 import { processIncomingRequest } from '@/lib/automation-engine';
+import { shipmentRequestSchema } from '@/lib/validation';
+import { getSystemPausedState } from '@/lib/toggle';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +25,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if system is paused
+    const isPaused = await getSystemPausedState();
+    if (isPaused) {
+      return NextResponse.json(
+        { success: false, error: { code: 'SYSTEM_PAUSED', message: 'The system is currently paused. New quote requests cannot be processed.' } },
+        { status: 503 }
+      );
+    }
+
     // Parse body
     let body: Record<string, unknown>;
     try {
@@ -34,18 +45,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate input schema
+    const parseResult = shipmentRequestSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: parseResult.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const validated = parseResult.data;
+
     // Process via automation engine
     const result = await processIncomingRequest({
-      customer_name: typeof body.customer_name === 'string' ? body.customer_name : null,
-      customer_contact: typeof body.customer_contact === 'string' ? body.customer_contact : null,
-      origin_postal_code: typeof body.origin_postal_code === 'string' ? body.origin_postal_code : null,
-      destination_postal_code: typeof body.destination_postal_code === 'string' ? body.destination_postal_code : null,
-      weight_kg: typeof body.weight_kg === 'number' ? body.weight_kg : null,
-      cargo_type: typeof body.cargo_type === 'string' ? body.cargo_type : null,
-      language: body.language as 'ar' | 'tr' | 'en' | undefined,
-      channel: body.channel as 'whatsapp' | 'telegram' | 'email' | undefined,
+      customer_name: validated.customer_name ?? null,
+      customer_contact: validated.customer_contact ?? null,
+      origin_postal_code: validated.origin_postal_code ?? null,
+      destination_postal_code: validated.destination_postal_code ?? null,
+      weight_kg: validated.weight_kg ?? null,
+      cargo_type: validated.cargo_type ?? null,
+      language: validated.language,
+      channel: validated.channel,
       raw_message: typeof body.raw_message === 'string' ? body.raw_message : null,
-      handling_mode: body.handling_mode as 'auto' | 'manual' | 'external' | undefined,
+      handling_mode: validated.handling_mode,
     });
 
     return NextResponse.json({ success: true, data: result });

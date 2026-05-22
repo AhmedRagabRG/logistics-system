@@ -13,6 +13,7 @@ interface Settings {
   global_markup_percent: number;
   vendor_msg_email: string | null;
   vendor_msg_telegram: string | null;
+  is_paused: boolean;
 }
 
 export default function SettingsPage() {

@@ -12,6 +12,7 @@ interface SettingsFormProps {
     global_markup_percent?: number;
     vendor_msg_email?: string | null;
     vendor_msg_telegram?: string | null;
+    is_paused?: boolean;
   };
   onSuccess?: () => void;
 }
@@ -41,6 +42,7 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
       : (initialData?.global_markup_percent ?? 0),
     vendor_msg_email: initialData?.vendor_msg_email ?? '',
     vendor_msg_telegram: initialData?.vendor_msg_telegram ?? '',
+    is_paused: initialData?.is_paused ?? false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +64,7 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
         : form.global_markup_percent,
       vendor_msg_email: form.vendor_msg_email.trim() || null,
       vendor_msg_telegram: form.vendor_msg_telegram.trim() || null,
+      is_paused: form.is_paused,
     };
 
     try {
@@ -95,6 +98,26 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
           <option value="manual_approval">{_t('settings_mode_manual')}</option>
         </select>
         <p className="mt-1 text-[10px] text-[var(--muted)]">{_t('settings_mode_description')}</p>
+      </div>
+
+      <div className={`rounded border px-3 py-3 ${form.is_paused ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--success)] bg-[var(--success)]/5'}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">System Status</div>
+            <div className={`mt-0.5 text-xs font-bold ${form.is_paused ? 'text-[var(--accent)]' : 'text-[var(--success)]'}`}>
+              {form.is_paused ? 'PAUSED — New quote requests will be rejected' : 'RUNNING — Accepting new quote requests'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, is_paused: !form.is_paused })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.is_paused ? 'bg-[var(--accent)]' : 'bg-[var(--success)]'}`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.is_paused ? 'translate-x-6' : 'translate-x-1'}`}
+            />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

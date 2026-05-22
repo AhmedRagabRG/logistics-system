@@ -5,3 +5,4 @@ export default async function Page() {
   await connection();
   return <AdminsPage />;
 }
+

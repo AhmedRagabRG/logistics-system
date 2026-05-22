@@ -26,10 +26,18 @@ export async function POST(
     }
 
     const body = await request.json();
-    const targetCountry = body.target_country?.trim();
+    const targetCountry = body.target_country?.trim().toUpperCase();
     if (!targetCountry) {
       return NextResponse.json(
         { success: false, error: { code: 'VALIDATION_ERROR', message: 'Target country is required' } },
+        { status: 400 }
+      );
+    }
+
+    // VALIDATION: Target country must be a valid 2-letter ISO code
+    if (!/^[A-Z]{2}$/.test(targetCountry)) {
+      return NextResponse.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'Target country must be a valid 2-letter ISO country code (e.g., DE, TR)' } },
         { status: 400 }
       );
     }
@@ -63,6 +71,15 @@ export async function POST(
     }
 
     const quote = quoteRows[0];
+
+    // VALIDATION: Only pending quotes can have RFQs created
+    if (quote.status !== 'pending') {
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_STATUS', message: `Cannot create RFQ for quote with status '${quote.status}'. Only pending quotes are eligible.` } },
+        { status: 409 }
+      );
+    }
+
     if (quote.rfq_id) {
       return NextResponse.json(
         { success: false, error: { code: 'ALREADY_HAS_RFQ', message: 'Quote already has an RFQ' } },
@@ -115,7 +132,9 @@ export async function POST(
     const shipment = shipmentRows?.[0];
     const language = (shipment?.language as 'ar' | 'tr' | 'en') ?? 'en';
 
-    // Create vendor assignments and send messages
+    // Create vendor assignments and send messages via valid preferred channels only
+    const skippedVendors: Array<{ vendor_id: number; name: string; reason: string }> = [];
+
     for (const vendor of activeVendors) {
       const channels = Array.isArray(vendor.preferred_channels)
         ? vendor.preferred_channels
@@ -123,7 +142,20 @@ export async function POST(
           ? JSON.parse(vendor.preferred_channels)
           : ['email'];
 
-      for (const contactChannel of channels) {
+      // VALIDATION: Only use channels where vendor has valid contact info
+      const validChannels = channels.filter((ch: string) => {
+        if (ch === 'whatsapp') return !!(vendor.contact_phone && vendor.contact_phone.trim().length > 0);
+        if (ch === 'telegram') return !!(vendor.telegram_chat_id && vendor.telegram_chat_id.trim().length > 0);
+        if (ch === 'email') return !!(vendor.contact_email && vendor.contact_email.includes('@'));
+        return false;
+      });
+
+      if (validChannels.length === 0) {
+        skippedVendors.push({ vendor_id: vendor.id, name: vendor.name, reason: 'No valid contact info for preferred channels' });
+        continue;
+      }
+
+      for (const contactChannel of validChannels) {
         let contactId: string;
         if (contactChannel === 'whatsapp') {
           contactId = vendor.contact_phone ?? '';
@@ -132,8 +164,6 @@ export async function POST(
         } else {
           contactId = vendor.contact_email ?? '';
         }
-
-        if (!contactId) continue;
 
         if (contactChannel === 'whatsapp') {
           contactId = normalizeContactId(contactId, 'whatsapp');
@@ -202,6 +232,17 @@ export async function POST(
           },
         });
       }
+    }
+
+    if (skippedVendors.length > 0) {
+      console.log(`[RFQ-MANUAL] Skipped ${skippedVendors.length} vendors due to missing contact info:`, skippedVendors);
+      await logPricingEvent({
+        event_type: 'rfq_vendors_skipped',
+        quote_id: quoteId,
+        rfq_id: rfqId,
+        admin_id: auth.admin.id,
+        details: { skipped_vendors: skippedVendors },
+      });
     }
 
     await logPricingEvent({

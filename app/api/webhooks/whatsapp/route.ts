@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processIncomingRequest, processVendorReply } from '@/lib/automation-engine';
 import { trackCustomerMessageWindow, normalizeContactId } from '@/lib/messaging-window';
+import { getSystemPausedState } from '@/lib/toggle';
 import pool from '@/lib/db';
 import type { RowDataPacket } from 'mysql2/promise';
 
@@ -85,32 +86,39 @@ export async function POST(request: NextRequest) {
         console.error(`[WHATSAPP-WEBHOOK] processVendorReply error:`, err);
       });
     } else {
-      // CUSTOMER MESSAGE: create quote
-      console.log(`[WHATSAPP-WEBHOOK] Processing as CUSTOMER MESSAGE`);
-
-      // Track that customer messaged us — opens 24h free-form reply window
-      console.log(`[WHATSAPP-WEBHOOK] Tracking 24h window for ${normalizedContact}`);
-      trackCustomerMessageWindow(normalizedContact, 'whatsapp').then(() => {
-        console.log(`[WHATSAPP-WEBHOOK] Window tracked successfully for ${normalizedContact}`);
-      }).catch((err) => {
-        console.error(`[WHATSAPP-WEBHOOK] Window tracking error:`, err);
-      });
-
-      // Fire-and-forget: don't await, just return 200 to n8n quickly
-      console.log(`[WHATSAPP-WEBHOOK] Calling processIncomingRequest...`);
-      processIncomingRequest({
-        raw_message: String(messageText),
-        customer_name: profileName,
-        customer_contact: normalizedContact,
-        channel: 'whatsapp',
-        handling_mode: 'auto',
-      }).then((results) => {
-        const resultList = Array.isArray(results) ? results : [results];
-        for (const r of resultList) {
-          console.log(`[WHATSAPP-WEBHOOK] Quote created: quote_id=${r.quote_id}, status=${r.status}`);
+      // CUSTOMER MESSAGE: create quote (blocked if system is paused)
+      getSystemPausedState().then((isPaused) => {
+        if (isPaused) {
+          console.log(`[WHATSAPP-WEBHOOK] System is paused — skipping customer quote request`);
+          return;
         }
-      }).catch((err) => {
-        console.error(`[WHATSAPP-WEBHOOK] processIncomingRequest error:`, err);
+
+        console.log(`[WHATSAPP-WEBHOOK] Processing as CUSTOMER MESSAGE`);
+
+        // Track that customer messaged us — opens 24h free-form reply window
+        console.log(`[WHATSAPP-WEBHOOK] Tracking 24h window for ${normalizedContact}`);
+        trackCustomerMessageWindow(normalizedContact, 'whatsapp').then(() => {
+          console.log(`[WHATSAPP-WEBHOOK] Window tracked successfully for ${normalizedContact}`);
+        }).catch((err) => {
+          console.error(`[WHATSAPP-WEBHOOK] Window tracking error:`, err);
+        });
+
+        // Fire-and-forget: don't await, just return 200 to n8n quickly
+        console.log(`[WHATSAPP-WEBHOOK] Calling processIncomingRequest...`);
+        processIncomingRequest({
+          raw_message: String(messageText),
+          customer_name: profileName,
+          customer_contact: normalizedContact,
+          channel: 'whatsapp',
+          handling_mode: 'auto',
+        }).then((results) => {
+          const resultList = Array.isArray(results) ? results : [results];
+          for (const r of resultList) {
+            console.log(`[WHATSAPP-WEBHOOK] Quote created: quote_id=${r.quote_id}, status=${r.status}`);
+          }
+        }).catch((err) => {
+          console.error(`[WHATSAPP-WEBHOOK] processIncomingRequest error:`, err);
+        });
       });
     }
 

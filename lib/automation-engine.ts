@@ -367,169 +367,244 @@ async function createQuoteForRoute({
   let rfqReference: string | null = null;
 
   if (!pricingResult.found && !oversize) {
-    // ─── Determine target country for vendor selection ───
-    // Vendors serve the DESTINATION — they ship cargo TO that country.
-    // Fallback chain: parsed destination country → destination postal code → destination city → origin country (last resort)
+    // ─── VALIDATION: Prevent incorrectly auto-sending RFQs based on handling_mode ───
+    if (handlingMode === 'external') {
+      reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. External mode: RFQ not initiated.`;
+      await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
+      await logPricingEvent({
+        event_type: 'rfq_skipped',
+        quote_id: quoteId,
+        details: { reason: 'handling_mode_external', handling_mode: handlingMode },
+      });
+    } else if (handlingMode === 'manual') {
+      reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. Manual mode: awaiting admin review before sending to vendors.`;
+      await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
+      await logPricingEvent({
+        event_type: 'rfq_skipped',
+        quote_id: quoteId,
+        details: { reason: 'handling_mode_manual', handling_mode: handlingMode },
+      });
+    } else {
+      // ─── Determine target country for vendor selection ───
+      // Vendors serve the DESTINATION — they ship cargo TO that country.
+      // Fallback chain: parsed destination country → destination postal code → destination city → origin country (last resort)
 
-    let targetCountry: string | null = parsed.destination_country ?? null;
-    let targetCountrySource = 'parsed.destination_country';
+      let targetCountry: string | null = parsed.destination_country ?? null;
+      let targetCountrySource = 'parsed.destination_country';
 
-    if (!targetCountry && destinationPostalCode) {
-      targetCountry = await resolveCountryFromPostalCode(destinationPostalCode);
-      if (targetCountry) targetCountrySource = 'destination_postal_code';
-    }
-
-    if (!targetCountry && destinationCity) {
-      targetCountry = resolveCountryFromCity(destinationCity);
-      if (targetCountry) targetCountrySource = 'destination_city';
-    }
-
-    if (!targetCountry && parsed.origin_country) {
-      targetCountry = parsed.origin_country;
-      targetCountrySource = 'origin_country (fallback)';
-    }
-
-    const finalTargetCountry = targetCountry ?? 'UNKNOWN';
-
-    console.log(`[RFQ-AUTO] quote=${quoteId} origin="${originRegionValue}" dest="${destinationRegionValue}" targetCountry="${finalTargetCountry}" (source: ${targetCountrySource})`);
-
-    // Select ALL active vendors for target country (no limit)
-    const activeVendors = await selectVendorsForCountry(finalTargetCountry);
-
-    if (activeVendors.length === 0) {
-      // No vendors found for this route — update review reason to be honest
-      reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. No vendors found for ${finalTargetCountry}.`;
-    }
-
-    if (activeVendors.length > 0) {
-      // Generate RFQ reference
-      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      rfqReference = `RFQ-${timestamp}-${random}`;
-
-      const vendorIds = activeVendors.map((v) => v.id);
-
-      // Create RFQ record
-      const [rfqResult] = await pool.execute<ResultSetHeader>(
-        `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status)
-         VALUES (?, ?, ?, ?, ?)`,
-        [quoteId, rfqReference, finalTargetCountry, JSON.stringify(vendorIds), 'open']
-      );
-
-      rfqId = rfqResult.insertId;
-
-      // Link quote to RFQ
-      await pool.execute<ResultSetHeader>(
-        `UPDATE quotes SET rfq_id = ? WHERE id = ?`,
-        [rfqId, quoteId]
-      );
-
-      // Create vendor assignments and send messages via ALL preferred channels
-      for (const vendor of activeVendors) {
-        const channels = Array.isArray(vendor.preferred_channels)
-          ? vendor.preferred_channels
-          : typeof vendor.preferred_channels === 'string'
-            ? JSON.parse(vendor.preferred_channels)
-            : ['email'];
-
-        for (const contactChannel of channels) {
-          let contactId: string;
-          if (contactChannel === 'whatsapp') {
-            contactId = vendor.contact_phone ?? '';
-          } else if (contactChannel === 'telegram') {
-            contactId = vendor.telegram_chat_id ?? '';
-          } else {
-            contactId = vendor.contact_email ?? '';
-          }
-
-          if (!contactId) continue;
-
-          // Normalize WhatsApp contact IDs so they match incoming webhook format
-          if (contactChannel === 'whatsapp') {
-            contactId = normalizeContactId(contactId, 'whatsapp');
-          }
-
-          await pool.execute<ResultSetHeader>(
-            `INSERT INTO rfq_vendor_assignments (rfq_id, vendor_id, contact_channel, contact_id, status)
-             VALUES (?, ?, ?, ?, ?)`,
-            [rfqId, vendor.id, contactChannel, contactId, 'pending']
-          );
-
-          let sendResult: { success: boolean; messageId?: string | number; error?: string };
-          let sentMessage: string;
-
-          if (contactChannel === 'whatsapp') {
-            // WhatsApp Business API requires an APPROVED TEMPLATE for business-initiated messages.
-            // Free-form text will fail with error 131030 if the vendor hasn't messaged in 24h.
-            // Template: logistics_rfq_request (must be created in Meta Business Manager)
-            const templateParams = [
-              vendor.name,                      // {{1}} Vendor name
-              String(originRegionValue),        // {{2}} Origin
-              String(destinationRegionValue),   // {{3}} Destination
-              `${weightKg!.toLocaleString()} kg`, // {{4}} Weight
-              cargoType ?? 'General Cargo',     // {{5}} Cargo type
-              rfqReference!,                    // {{6}} RFQ reference
-            ];
-
-            sendResult = await sendWhatsAppTemplate(
-              contactId,
-              'logistics_rfq_request',
-              'en',
-              templateParams
-            );
-            sentMessage = `[Template: logistics_rfq_request] ${templateParams.join(' | ')}`;
-          } else {
-            // Email / Telegram: free-form text works fine
-            const msg = await generateVendorMessage({
-              rfq_reference: rfqReference,
-              target_country: finalTargetCountry,
-              origin_region: String(originRegionValue),
-              destination_region: String(destinationRegionValue),
-              weight_kg: weightKg!,
-              cargo_type: cargoType,
-              vendor_name: vendor.name,
-              language,
-              channel: contactChannel as 'email' | 'whatsapp' | 'telegram',
-            });
-            sentMessage = msg.message;
-
-            sendResult = await sendMessage({
-              channel: contactChannel as 'whatsapp' | 'telegram' | 'email',
-              contactId,
-              message: msg.message,
-              subject: msg.subject,
-            });
-          }
-
-          await logVendorEvent({
-            event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
-            quote_id: quoteId,
-            rfq_id: rfqId,
-            vendor_id: vendor.id,
-            details: {
-              rfq_reference: rfqReference,
-              channel: contactChannel,
-              contact_id: contactId,
-              message: sentMessage,
-              sent: sendResult.success,
-              error: sendResult.error ?? null,
-            },
-          });
-        }
+      if (!targetCountry && destinationPostalCode) {
+        targetCountry = await resolveCountryFromPostalCode(destinationPostalCode);
+        if (targetCountry) targetCountrySource = 'destination_postal_code';
       }
 
-      await logPricingEvent({
-        event_type: 'rfq_initiated',
-        quote_id: quoteId,
-        rfq_id: rfqId,
-        details: { target_country: targetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference },
-      });
-    } else if (activeVendors.length === 0) {
-      // Update quote with honest review reason (no vendors found)
-      await pool.execute(
-        `UPDATE quotes SET review_reason = ? WHERE id = ?`,
-        [reviewReason, quoteId]
-      );
+      if (!targetCountry && destinationCity) {
+        targetCountry = resolveCountryFromCity(destinationCity);
+        if (targetCountry) targetCountrySource = 'destination_city';
+      }
+
+      if (!targetCountry && parsed.origin_country) {
+        targetCountry = parsed.origin_country;
+        targetCountrySource = 'origin_country (fallback)';
+      }
+
+      const finalTargetCountry = targetCountry ?? 'UNKNOWN';
+
+      console.log(`[RFQ-AUTO] quote=${quoteId} origin="${originRegionValue}" dest="${destinationRegionValue}" targetCountry="${finalTargetCountry}" (source: ${targetCountrySource})`);
+
+      // VALIDATION: Do not send RFQs if we cannot determine a valid target country
+      if (finalTargetCountry === 'UNKNOWN') {
+        reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. Cannot determine target country for vendor selection.`;
+        await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
+        await logPricingEvent({
+          event_type: 'rfq_skipped',
+          quote_id: quoteId,
+          details: { reason: 'unknown_target_country', handling_mode: handlingMode },
+        });
+      } else {
+        // Select ALL active vendors for target country (no limit)
+        const activeVendors = await selectVendorsForCountry(finalTargetCountry);
+
+        if (activeVendors.length === 0) {
+          // No vendors found for this route — update review reason to be honest
+          reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. No vendors found for ${finalTargetCountry}.`;
+          await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
+          await logPricingEvent({
+            event_type: 'rfq_skipped',
+            quote_id: quoteId,
+            details: { reason: 'no_vendors_found', target_country: finalTargetCountry },
+          });
+        }
+
+        if (activeVendors.length > 0) {
+          // VALIDATION: Race-condition check — ensure quote is still pending before sending to vendors
+          const [statusRows] = await pool.execute<Array<RowDataPacket & { status: string }>>(
+            'SELECT status FROM quotes WHERE id = ? LIMIT 1',
+            [quoteId]
+          );
+          const currentStatus = statusRows?.[0]?.status;
+          if (currentStatus !== 'pending') {
+            reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. Quote status changed to '${currentStatus}' before RFQ could be sent.`;
+            await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
+            await logPricingEvent({
+              event_type: 'rfq_skipped',
+              quote_id: quoteId,
+              details: { reason: 'quote_status_changed', current_status: currentStatus },
+            });
+          } else {
+            // Generate RFQ reference
+            const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            rfqReference = `RFQ-${timestamp}-${random}`;
+
+            const vendorIds = activeVendors.map((v) => v.id);
+
+            // Create RFQ record
+            const [rfqResult] = await pool.execute<ResultSetHeader>(
+              `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status)
+               VALUES (?, ?, ?, ?, ?)`,
+              [quoteId, rfqReference, finalTargetCountry, JSON.stringify(vendorIds), 'open']
+            );
+
+            rfqId = rfqResult.insertId;
+
+            // Link quote to RFQ
+            await pool.execute<ResultSetHeader>(
+              `UPDATE quotes SET rfq_id = ? WHERE id = ?`,
+              [rfqId, quoteId]
+            );
+
+            // Create vendor assignments and send messages via valid preferred channels only
+            const skippedVendors: Array<{ vendor_id: number; name: string; reason: string }> = [];
+
+            for (const vendor of activeVendors) {
+              const channels = Array.isArray(vendor.preferred_channels)
+                ? vendor.preferred_channels
+                : typeof vendor.preferred_channels === 'string'
+                  ? JSON.parse(vendor.preferred_channels)
+                  : ['email'];
+
+              // VALIDATION: Only use channels where vendor has valid contact info
+              const validChannels = channels.filter((ch: string) => {
+                if (ch === 'whatsapp') return !!(vendor.contact_phone && vendor.contact_phone.trim().length > 0);
+                if (ch === 'telegram') return !!(vendor.telegram_chat_id && vendor.telegram_chat_id.trim().length > 0);
+                if (ch === 'email') return !!(vendor.contact_email && vendor.contact_email.includes('@'));
+                return false;
+              });
+
+              if (validChannels.length === 0) {
+                skippedVendors.push({ vendor_id: vendor.id, name: vendor.name, reason: 'No valid contact info for preferred channels' });
+                continue;
+              }
+
+              for (const contactChannel of validChannels) {
+                let contactId: string;
+                if (contactChannel === 'whatsapp') {
+                  contactId = vendor.contact_phone ?? '';
+                } else if (contactChannel === 'telegram') {
+                  contactId = vendor.telegram_chat_id ?? '';
+                } else {
+                  contactId = vendor.contact_email ?? '';
+                }
+
+                // Normalize WhatsApp contact IDs so they match incoming webhook format
+                if (contactChannel === 'whatsapp') {
+                  contactId = normalizeContactId(contactId, 'whatsapp');
+                }
+
+                await pool.execute<ResultSetHeader>(
+                  `INSERT INTO rfq_vendor_assignments (rfq_id, vendor_id, contact_channel, contact_id, status)
+                   VALUES (?, ?, ?, ?, ?)`,
+                  [rfqId, vendor.id, contactChannel, contactId, 'pending']
+                );
+
+                let sendResult: { success: boolean; messageId?: string | number; error?: string };
+                let sentMessage: string;
+
+                if (contactChannel === 'whatsapp') {
+                  // WhatsApp Business API requires an APPROVED TEMPLATE for business-initiated messages.
+                  // Free-form text will fail with error 131030 if the vendor hasn't messaged in 24h.
+                  // Template: logistics_rfq_request (must be created in Meta Business Manager)
+                  const templateParams = [
+                    vendor.name,                      // {{1}} Vendor name
+                    String(originRegionValue),        // {{2}} Origin
+                    String(destinationRegionValue),   // {{3}} Destination
+                    `${weightKg!.toLocaleString()} kg`, // {{4}} Weight
+                    cargoType ?? 'General Cargo',     // {{5}} Cargo type
+                    rfqReference!,                    // {{6}} RFQ reference
+                  ];
+
+                  sendResult = await sendWhatsAppTemplate(
+                    contactId,
+                    'logistics_rfq_request',
+                    'en',
+                    templateParams
+                  );
+                  sentMessage = `[Template: logistics_rfq_request] ${templateParams.join(' | ')}`;
+                } else {
+                  // Email / Telegram: free-form text works fine
+                  const msg = await generateVendorMessage({
+                    rfq_reference: rfqReference,
+                    target_country: finalTargetCountry,
+                    origin_region: String(originRegionValue),
+                    destination_region: String(destinationRegionValue),
+                    weight_kg: weightKg!,
+                    cargo_type: cargoType,
+                    vendor_name: vendor.name,
+                    language,
+                    channel: contactChannel as 'email' | 'whatsapp' | 'telegram',
+                  });
+                  sentMessage = msg.message;
+
+                  sendResult = await sendMessage({
+                    channel: contactChannel as 'whatsapp' | 'telegram' | 'email',
+                    contactId,
+                    message: msg.message,
+                    subject: msg.subject,
+                  });
+                }
+
+                await logVendorEvent({
+                  event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
+                  quote_id: quoteId,
+                  rfq_id: rfqId,
+                  vendor_id: vendor.id,
+                  details: {
+                    rfq_reference: rfqReference,
+                    channel: contactChannel,
+                    contact_id: contactId,
+                    message: sentMessage,
+                    sent: sendResult.success,
+                    error: sendResult.error ?? null,
+                  },
+                });
+              }
+            }
+
+            if (skippedVendors.length > 0) {
+              console.log(`[RFQ-AUTO] Skipped ${skippedVendors.length} vendors due to missing contact info:`, skippedVendors);
+              await logPricingEvent({
+                event_type: 'rfq_vendors_skipped',
+                quote_id: quoteId,
+                rfq_id: rfqId,
+                details: { skipped_vendors: skippedVendors },
+              });
+            }
+
+            await logPricingEvent({
+              event_type: 'rfq_initiated',
+              quote_id: quoteId,
+              rfq_id: rfqId,
+              details: { target_country: finalTargetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference },
+            });
+          }
+        } else if (activeVendors.length === 0) {
+          // Update quote with honest review reason (no vendors found)
+          await pool.execute(
+            `UPDATE quotes SET review_reason = ? WHERE id = ?`,
+            [reviewReason, quoteId]
+          );
+        }
+      }
     }
   }
 
@@ -635,7 +710,7 @@ async function createQuoteForRoute({
   };
 }
 
-export async function processExpiredRFQs(): Promise<{
+export async function processExpiredRFQs(isPaused: boolean = false): Promise<{
   processed: number;
   results: Array<{ rfq_id: number; quote_id: number; status: string; lowest_price?: number; final_price?: number; vendor_id?: number }>;
 }> {
@@ -735,9 +810,9 @@ export async function processExpiredRFQs(): Promise<{
       [finalPrice, selectedVendorId, rfq.id]
     );
 
-    // Only notify customer in auto/low-confidence mode.
+    // Only notify customer in auto/low-confidence mode and when system is NOT paused.
     // In manual mode, admin must review and approve/reject first.
-    if (!isManualMode) {
+    if (!isManualMode && !isPaused) {
       const [customerRows] = await pool.execute<
         Array<RowDataPacket & { customer_contact: string | null; channel: string; language: string; origin_region: string; destination_region: string; is_dual_mode: boolean; sea_final_price: number; sea_currency: string }>
       >(
@@ -810,6 +885,21 @@ export async function processExpiredRFQs(): Promise<{
       },
     });
       }
+    } else if (isPaused) {
+      console.log(`[RFQ-CRON] System is paused — skipping customer notification for quote ${rfq.quote_id}`);
+      await logPricingEvent({
+        event_type: 'rfq_quote_generated',
+        quote_id: rfq.quote_id,
+        rfq_id: rfq.id,
+        details: {
+          vendor_id: selectedVendorId,
+          vendor_price: lowestPrice,
+          vendor_currency: lowestCurrency,
+          final_price: finalPrice,
+          paused: true,
+          reason: 'system_paused',
+        },
+      });
     } else {
       console.log(`[RFQ-CRON] Manual approval mode — skipping customer notification for quote ${rfq.quote_id}`);
     }
@@ -976,16 +1066,16 @@ export async function processVendorReply(
     return { success: false, message: 'No open RFQ found for this contact. Stored for manual review.', matched: false };
   }
 
-  // Step 5: Extract price from reply
+  // Step 5: Extract price and currency from reply
   let responsePrice = parsedReply.price;
-  let responseCurrency = parsedReply.currency ?? 'TRY';
+  let responseCurrency = parsedReply.currency ?? null;
 
   // Fallback: try regex extraction
   if (!responsePrice) {
     const priceMatch = replyText.match(/(\d[\d.,]*\d)\s*(EUR|USD|TRY|GBP|€|\$|₺)?/i);
     if (priceMatch) {
       responsePrice = parseFloat(priceMatch[1].replace(/,/g, ''));
-      responseCurrency = priceMatch[2] ? priceMatch[2].toUpperCase() : 'TRY';
+      responseCurrency = priceMatch[2] ? priceMatch[2].toUpperCase() : null;
       if (responseCurrency === '€') responseCurrency = 'EUR';
       if (responseCurrency === '$') responseCurrency = 'USD';
       if (responseCurrency === '₺') responseCurrency = 'TRY';

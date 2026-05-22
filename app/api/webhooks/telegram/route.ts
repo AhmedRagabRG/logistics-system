@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processIncomingRequest, processVendorReply } from '@/lib/automation-engine';
+import { getSystemPausedState } from '@/lib/toggle';
 import pool from '@/lib/db';
 import type { RowDataPacket } from 'mysql2/promise';
 
@@ -58,7 +59,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: result.success, data: result });
     }
 
-    // Customer quote request via Telegram
+    // Customer quote request via Telegram (blocked if system is paused)
+    const isPaused = await getSystemPausedState();
+    if (isPaused) {
+      console.log(`[TELEGRAM-WEBHOOK] System is paused — rejecting customer quote request`);
+      return NextResponse.json(
+        { success: false, error: { code: 'SYSTEM_PAUSED', message: 'The system is currently paused. New quote requests cannot be processed.' } },
+        { status: 503 }
+      );
+    }
+
     const result = await processIncomingRequest({
       raw_message: String(messageText),
       customer_name: senderName,

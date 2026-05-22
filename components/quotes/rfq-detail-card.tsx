@@ -54,6 +54,7 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
   // Get vendor assignments with vendor names
   const [vendorRows] = await pool.execute<
     Array<RowDataPacket & {
+      id: number;
       vendor_id: number;
       vendor_name: string;
       contact_channel: string;
@@ -65,7 +66,7 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
       created_at: Date;
     }>
   >(
-    `SELECT a.vendor_id, v.name as vendor_name, a.contact_channel, a.contact_id,
+    `SELECT a.id, a.vendor_id, v.name as vendor_name, a.contact_channel, a.contact_id,
             a.status, a.response_price, a.response_currency, a.responded_at, a.created_at
      FROM rfq_vendor_assignments a
      JOIN vendors v ON v.id = a.vendor_id
@@ -165,6 +166,7 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
               response_price: v.response_price,
               response_currency: v.response_currency,
               status: v.status,
+              assignment_id: v.id,
             }))}
             selectedVendorId={rfq.selected_vendor_id}
             locale={locale}
@@ -196,8 +198,13 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
                       {v.status === 'responded' && v.response_price ? (
                         <>
                           <div className={`font-mono text-sm font-bold ${isSelected ? 'text-[var(--success)]' : 'text-[var(--foreground)]'}`}>
-                            {(typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2 })} {v.response_currency}
+                            {(typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2 })} {v.response_currency ?? '—'}
                           </div>
+                          {!v.response_currency && (
+                            <div className="text-[10px] font-semibold uppercase text-[var(--danger)]">
+                              {locale === 'tr' ? 'Para birimi eksik' : 'Currency missing'}
+                            </div>
+                          )}
                           <div className="text-[10px] font-mono text-[var(--muted)]">
                             {v.responded_at ? new Date(v.responded_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : ''}
                           </div>

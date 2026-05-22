@@ -4,6 +4,7 @@ import type { RowDataPacket } from 'mysql2/promise';
 type ToggleState = 'auto_send' | 'low_confidence_only' | 'manual_approval';
 
 let cachedToggle: ToggleState | null = null;
+let cachedPaused: boolean | null = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
@@ -28,7 +29,29 @@ export async function getMasterLogicToggle(): Promise<ToggleState> {
   return toggle;
 }
 
+export async function getSystemPausedState(): Promise<boolean> {
+  const now = Date.now();
+
+  if (cachedPaused !== null && now - cachedAt < CACHE_TTL_MS) {
+    return cachedPaused;
+  }
+
+  const [rows] = await pool.execute<
+    Array<RowDataPacket & { is_paused: number | boolean }>
+  >(
+    'SELECT is_paused FROM system_settings ORDER BY id DESC LIMIT 1'
+  );
+
+  const paused = rows && rows.length > 0 ? Boolean(rows[0].is_paused) : false;
+
+  cachedPaused = paused;
+  cachedAt = now;
+
+  return paused;
+}
+
 export function invalidateToggleCache(): void {
   cachedToggle = null;
+  cachedPaused = null;
   cachedAt = 0;
 }

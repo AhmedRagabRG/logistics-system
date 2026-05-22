@@ -311,7 +311,9 @@ export async function parseVendorReply(
         content: `Extract from this vendor reply:
 1. RFQ reference number (usually starts with RFQ- or is a numeric ID)
 2. Price amount (number only)
-3. Currency code (3 letters, default TRY)
+3. Currency code (3 letters, e.g. EUR, USD, TRY). Return null if not explicitly stated.
+
+Important: Do NOT guess the currency. Only return a currency if the vendor explicitly mentions it (e.g., "1500 EUR", "$2000", "3000 USD"). If no currency is mentioned, return null.
 
 Return ONLY JSON: {"rfq_reference": string|null, "price": number|null, "currency": string|null}`,
       },

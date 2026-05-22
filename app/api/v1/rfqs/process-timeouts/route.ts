@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processExpiredRFQs } from '@/lib/automation-engine';
 import { requireAdminSession } from '@/lib/admin-auth';
+import { getSystemPausedState } from '@/lib/toggle';
 
 /**
  * RFQ Timeout Processor
@@ -31,12 +32,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processExpiredRFQs();
+    const isPaused = await getSystemPausedState();
+    const result = await processExpiredRFQs(isPaused);
 
     return NextResponse.json({
       success: true,
       data: {
         processed: result.processed,
+        paused: isPaused,
         results: result.results,
       },
     });

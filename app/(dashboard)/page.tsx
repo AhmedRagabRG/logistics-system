@@ -29,13 +29,14 @@ export default async function DashboardHomePage() {
       ]
     : [];
 
-  const kpiStats = analytics
+    const kpiStats = analytics
     ? [
         { label: 'Revenue', value: `${analytics.summary.total_revenue.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')} TRY`, accent: true },
         { label: 'Active Vendors', value: analytics.summary.active_vendors },
         { label: 'Open RFQs', value: analytics.summary.open_rfqs, warn: analytics.summary.open_rfqs > 0 },
         { label: 'Unmatched Replies', value: analytics.summary.unmatched_replies, warn: analytics.summary.unmatched_replies > 0 },
         { label: 'System Mode', value: analytics.summary.system_toggle.replace('_', ' ') },
+        { label: 'System Status', value: analytics.summary.is_paused ? 'PAUSED' : 'RUNNING', warn: analytics.summary.is_paused },
       ]
     : [];
 
@@ -57,7 +58,7 @@ export default async function DashboardHomePage() {
       {analytics && (
         <>
           {/* KPI row */}
-          <div className="grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)] sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)] sm:grid-cols-3 lg:grid-cols-6">
             {kpiStats.map((s) => (
               <div key={s.label} className="bg-[var(--surface)] px-3 py-3">
                 <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">

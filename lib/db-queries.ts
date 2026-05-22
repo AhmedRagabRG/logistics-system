@@ -19,6 +19,7 @@ export interface AnalyticsData {
     unmatched_replies: number;
     open_rfqs: number;
     system_toggle: string;
+    is_paused: boolean;
   };
   channel_distribution: Array<{ channel: string; count: number }>;
   language_distribution: Array<{ language: string; count: number }>;
@@ -78,6 +79,7 @@ export async function getAnalytics(
         unmatched_replies: number;
         open_rfqs: number;
         system_toggle: string;
+        is_paused: number | boolean;
       }
     >
   >(
@@ -95,7 +97,8 @@ export async function getAnalytics(
       (SELECT COUNT(*) FROM vendors WHERE is_active = 1) as active_vendors,
       (SELECT COUNT(*) FROM unmatched_vendor_replies WHERE status = 'unmatched') as unmatched_replies,
       (SELECT COUNT(*) FROM rfq_records WHERE status IN ('open', 'responded')) as open_rfqs,
-      (SELECT master_logic_toggle FROM system_settings ORDER BY id DESC LIMIT 1) as system_toggle`,
+      (SELECT master_logic_toggle FROM system_settings ORDER BY id DESC LIMIT 1) as system_toggle,
+      (SELECT is_paused FROM system_settings ORDER BY id DESC LIMIT 1) as is_paused`,
     [...dateParams, ...dateParams, ...dateParams, ...dateParams, ...dateParams, ...dateParams, ...dateParams, ...dateParams, ...dateParams]
   );
 
@@ -236,6 +239,7 @@ export async function getAnalytics(
       unmatched_replies: summary.unmatched_replies,
       open_rfqs: summary.open_rfqs,
       system_toggle: summary.system_toggle,
+      is_paused: Boolean(summary.is_paused),
     },
     channel_distribution: channelRows || [],
     language_distribution: languageRows || [],

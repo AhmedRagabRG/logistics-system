@@ -60,7 +60,7 @@ export async function POST(
         `UPDATE rfq_vendor_assignments
          SET response_price = ?, response_currency = ?, responded_at = NOW(), status = 'responded'
          WHERE rfq_id = ? AND vendor_id = ?`,
-        [response.price, response.currency, rfqId, response.vendor_id]
+        [response.price, response.currency ?? null, rfqId, response.vendor_id]
       );
     }
 
