@@ -381,14 +381,6 @@ async function createQuoteForRoute({
         quote_id: quoteId,
         details: { reason: 'handling_mode_external', handling_mode: handlingMode },
       });
-    } else if (handlingMode === 'manual') {
-      reviewReason = `No internal pricing for ${originRegionValue} → ${destinationRegionValue}. Manual mode: awaiting admin review before sending to vendors.`;
-      await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
-      await logPricingEvent({
-        event_type: 'rfq_skipped',
-        quote_id: quoteId,
-        details: { reason: 'handling_mode_manual', handling_mode: handlingMode },
-      });
     } else {
       // ─── Determine target country for vendor selection ───
       // Vendors serve the DESTINATION — they ship cargo TO that country.
