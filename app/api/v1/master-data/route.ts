@@ -4,7 +4,6 @@ import {
   vendorSchema,
   routePricingSchema,
   systemSettingsSchema,
-  exchangeRateSchema,
 } from '@/lib/validation';
 import { invalidateToggleCache } from '@/lib/toggle';
 import { requireAdminSession } from '@/lib/admin-auth';
@@ -301,85 +300,6 @@ async function updateSettings(body: unknown) {
   return NextResponse.json({ success: true, data: { updated: true } });
 }
 
-// ─── Exchange Rates ────────────────────────────────────────────────────────
-
-async function listRates() {
-  const [rows] = await pool.execute<
-    Array<RowDataPacket>
-  >('SELECT * FROM exchange_rates ORDER BY effective_date DESC, from_currency, to_currency');
-  return NextResponse.json({ success: true, data: { rates: rows || [] } });
-}
-
-async function createRate(body: unknown) {
-  const parse = exchangeRateSchema.safeParse(body);
-  if (!parse.success) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid rate data',
-          details: parse.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
-        },
-      },
-      { status: 400 }
-    );
-  }
-  const data = parse.data;
-  const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date)
-     VALUES (?, ?, ?, ?)`,
-    [data.from_currency, data.to_currency, data.rate, data.effective_date]
-  );
-  return NextResponse.json({ success: true, data: { id: result.insertId } });
-}
-
-async function updateRate(id: number, body: unknown) {
-  const parse = exchangeRateSchema.partial().safeParse(
-    typeof body === 'object' && body !== null ? stripEmptyStrings(body as Record<string, unknown>) : body
-  );
-  if (!parse.success) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid rate data',
-          details: parse.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
-        },
-      },
-      { status: 400 }
-    );
-  }
-  const data = parse.data;
-  const fields: string[] = [];
-  const values: (string | number | null)[] = [];
-
-  if (data.from_currency !== undefined) { fields.push('from_currency = ?'); values.push(data.from_currency); }
-  if (data.to_currency !== undefined) { fields.push('to_currency = ?'); values.push(data.to_currency); }
-  if (data.rate !== undefined) { fields.push('rate = ?'); values.push(data.rate); }
-  if (data.effective_date !== undefined) { fields.push('effective_date = ?'); values.push(data.effective_date); }
-
-  if (fields.length === 0) {
-    return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'No fields to update' } }, { status: 400 });
-  }
-
-  values.push(id);
-  await pool.execute(`UPDATE exchange_rates SET ${fields.join(', ')} WHERE id = ?`, values);
-  return NextResponse.json({ success: true, data: { id } });
-}
-
-async function deleteRate(id: number) {
-  await pool.execute('DELETE FROM exchange_rates WHERE id = ?', [id]);
-  return NextResponse.json({ success: true, data: { id } });
-}
-
-async function deleteRates(ids: number[]) {
-  const placeholders = ids.map(() => '?').join(',');
-  await pool.execute(`DELETE FROM exchange_rates WHERE id IN (${placeholders})`, ids);
-  return NextResponse.json({ success: true, data: { deleted: ids.length } });
-}
-
 // ─── Main Handler ──────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
@@ -397,11 +317,9 @@ export async function GET(request: NextRequest) {
         return await listPricing();
       case 'settings':
         return await getSettings();
-      case 'rates':
-        return await listRates();
       default:
         return NextResponse.json(
-          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource. Use ?resource=vendors|pricing|settings|rates' } },
+          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource. Use ?resource=vendors|pricing|settings' } },
           { status: 400 }
         );
     }
@@ -428,11 +346,9 @@ export async function POST(request: NextRequest) {
         return await createVendor(body);
       case 'pricing':
         return await createPricing(body);
-      case 'rates':
-        return await createRate(body);
       default:
         return NextResponse.json(
-          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for POST. Use ?resource=vendors|pricing|rates' } },
+          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for POST. Use ?resource=vendors|pricing' } },
           { status: 400 }
         );
     }
@@ -469,11 +385,9 @@ export async function PUT(request: NextRequest) {
         return await updatePricing(id!, body);
       case 'settings':
         return await updateSettings(body);
-      case 'rates':
-        return await updateRate(id!, body);
       default:
         return NextResponse.json(
-          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for PUT. Use ?resource=vendors|pricing|settings|rates' } },
+          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for PUT. Use ?resource=vendors|pricing|settings' } },
           { status: 400 }
         );
     }
@@ -508,8 +422,6 @@ export async function DELETE(request: NextRequest) {
           return await deleteVendors(ids);
         case 'pricing':
           return await deletePricings(ids);
-        case 'rates':
-          return await deleteRates(ids);
         default:
           return NextResponse.json(
             { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for DELETE' } },
@@ -531,11 +443,9 @@ export async function DELETE(request: NextRequest) {
         return await deleteVendor(id);
       case 'pricing':
         return await deletePricing(id);
-      case 'rates':
-        return await deleteRate(id);
       default:
         return NextResponse.json(
-          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for DELETE. Use ?resource=vendors|pricing|rates' } },
+          { success: false, error: { code: 'VALIDATION_ERROR', message: 'Unknown resource for DELETE. Use ?resource=vendors|pricing' } },
           { status: 400 }
         );
     }

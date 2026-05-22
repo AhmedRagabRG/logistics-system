@@ -8,7 +8,6 @@ interface Settings {
   master_logic_toggle: 'auto_send' | 'low_confidence_only' | 'manual_approval';
   default_currency: string;
   oversize_weight_threshold_tons: number;
-  exchange_rate_reference_date: string | null;
   waiting_period: string;
   global_markup_percent: number;
   vendor_msg_email: string | null;

@@ -72,7 +72,6 @@ export interface SystemSettings {
   id: number;
   master_logic_toggle: 'auto_send' | 'low_confidence_only' | 'manual_approval';
   default_currency: string;
-  exchange_rate_reference_date: Date | null;
   oversize_weight_threshold_tons: number;
   waiting_period: string;
   global_markup_percent: number;
@@ -103,15 +102,6 @@ export interface RFQVendorAssignment {
   response_currency: string | null;
   responded_at: Date | null;
   status: 'pending' | 'responded';
-  created_at: Date;
-}
-
-export interface ExchangeRate {
-  id: number;
-  from_currency: string;
-  to_currency: string;
-  rate: number;
-  effective_date: Date;
   created_at: Date;
 }
 

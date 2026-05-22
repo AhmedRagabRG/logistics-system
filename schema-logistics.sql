@@ -117,7 +117,6 @@ CREATE TABLE IF NOT EXISTS system_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     master_logic_toggle ENUM('auto_send', 'low_confidence_only', 'manual_approval') NOT NULL DEFAULT 'manual_approval',
     default_currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
-    exchange_rate_reference_date DATE,
     oversize_weight_threshold_tons DECIMAL(5,2) NOT NULL DEFAULT 22.00,
     waiting_period VARCHAR(16) NOT NULL DEFAULT '30m',
     global_markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
@@ -127,18 +126,6 @@ CREATE TABLE IF NOT EXISTS system_settings (
     is_paused BOOLEAN NOT NULL DEFAULT FALSE,
     rfq_send_mode ENUM('auto', 'manual') NOT NULL DEFAULT 'auto',
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Exchange Rates
-CREATE TABLE IF NOT EXISTS exchange_rates (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    from_currency VARCHAR(3) NOT NULL,
-    to_currency VARCHAR(3) NOT NULL,
-    rate DECIMAL(15,6) NOT NULL,
-    effective_date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_rate (from_currency, to_currency, effective_date),
-    INDEX idx_effective_date (effective_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Customer Messaging Windows

@@ -32,13 +32,6 @@ INSERT INTO vendors (name, country_coverage, expertise_notes, priority_ranking, 
 ('Alpine Logistics', 'CH,AT,IT', 'Alpine region specialist, winter routes', 50, 'alpine@logistics.ch', '+41791234567', TRUE)
 ON DUPLICATE KEY UPDATE name = VALUES(name), country_coverage = VALUES(country_coverage);
 
--- Exchange rates (EUR/USD to TRY)
-INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VALUES
-('EUR', 'TRY', 35.50, '2026-04-28'),
-('USD', 'TRY', 32.80, '2026-04-28'),
-('GBP', 'TRY', 41.20, '2026-04-28')
-ON DUPLICATE KEY UPDATE rate = VALUES(rate);
-
 -- System settings (single row)
-INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, is_paused, rfq_send_mode) VALUES
-('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, FALSE, 'auto');
+INSERT INTO system_settings (master_logic_toggle, default_currency, oversize_weight_threshold_tons, waiting_period, global_markup_percent, is_paused, rfq_send_mode) VALUES
+('manual_approval', 'TRY', 22.00, '30m', 0.00, FALSE, 'auto');

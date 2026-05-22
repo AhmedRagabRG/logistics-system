@@ -201,7 +201,6 @@ CREATE TABLE IF NOT EXISTS system_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     master_logic_toggle ENUM('auto_send', 'low_confidence_only', 'manual_approval') NOT NULL DEFAULT 'manual_approval',
     default_currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
-    exchange_rate_reference_date DATE,
     oversize_weight_threshold_tons DECIMAL(5,2) NOT NULL DEFAULT 22.00,
     waiting_period VARCHAR(16) NOT NULL DEFAULT '30m',
     global_markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
@@ -252,18 +251,6 @@ CREATE TABLE IF NOT EXISTS countries (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_code (code),
     INDEX idx_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Exchange Rates
-CREATE TABLE IF NOT EXISTS exchange_rates (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    from_currency VARCHAR(3) NOT NULL,
-    to_currency VARCHAR(3) NOT NULL,
-    rate DECIMAL(15,6) NOT NULL,
-    effective_date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_rate (from_currency, to_currency, effective_date),
-    INDEX idx_effective_date (effective_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Postal Codes (prefix-based region mapping)
@@ -360,19 +347,12 @@ INSERT INTO vendors (name, country_coverage, expertise_notes, priority_ranking, 
 ON DUPLICATE KEY UPDATE name = VALUES(name), country_coverage = VALUES(country_coverage);
 
 -- Exchange rates (EUR/USD/GBP to TRY)
-INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VALUES
-('EUR', 'TRY', 35.50, '2026-04-28'),
-('USD', 'TRY', 32.80, '2026-04-28'),
-('GBP', 'TRY', 41.20, '2026-04-28')
-ON DUPLICATE KEY UPDATE rate = VALUES(rate);
-
 -- System settings (single row - master configuration)
-INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp, is_paused, rfq_send_mode) VALUES
-('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, NULL, NULL, NULL, FALSE, 'auto')
+INSERT INTO system_settings (master_logic_toggle, default_currency, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp, is_paused, rfq_send_mode) VALUES
+('manual_approval', 'TRY', 22.00, '30m', 0.00, NULL, NULL, NULL, FALSE, 'auto')
 ON DUPLICATE KEY UPDATE
     master_logic_toggle = VALUES(master_logic_toggle),
     default_currency = VALUES(default_currency),
-    exchange_rate_reference_date = VALUES(exchange_rate_reference_date),
     oversize_weight_threshold_tons = VALUES(oversize_weight_threshold_tons),
     waiting_period = VALUES(waiting_period),
     global_markup_percent = VALUES(global_markup_percent),

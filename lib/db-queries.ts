@@ -517,7 +517,6 @@ export interface SystemStatusData {
     postal_codes: number;
     countries: number;
     active_countries: number;
-    exchange_rates: number;
     quotes: number;
     shipment_requests: number;
   };
@@ -537,7 +536,6 @@ export async function getSystemStatus(): Promise<SystemStatusData> {
   const [pricingRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM route_pricing`);
   const [postalRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM postal_codes`);
   const [countryRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total, SUM(is_active) as active FROM countries`);
-  const [rateRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM exchange_rates`);
   const [quoteRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM quotes`);
   const [requestRows] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as total FROM shipment_requests`);
 
@@ -548,7 +546,6 @@ export async function getSystemStatus(): Promise<SystemStatusData> {
     postal_codes: Number(postalRows[0]?.total ?? 0),
     countries: Number(countryRows[0]?.total ?? 0),
     active_countries: Number(countryRows[0]?.active ?? 0),
-    exchange_rates: Number(rateRows[0]?.total ?? 0),
     quotes: Number(quoteRows[0]?.total ?? 0),
     shipment_requests: Number(requestRows[0]?.total ?? 0),
   };
@@ -567,7 +564,7 @@ export async function getSystemStatus(): Promise<SystemStatusData> {
   if (table_counts.route_pricing === 0) warnings.push('No route pricing found. Import pricing data in Master Data > Import.');
   if (table_counts.postal_codes === 0) warnings.push('No postal codes found. Import postal code data in Master Data > Import.');
   if (table_counts.active_countries === 0) warnings.push('No active countries found. Add countries in Master Data > Countries.');
-  if (table_counts.exchange_rates === 0) warnings.push('No exchange rates found. Add rates in Master Data > Exchange Rates.');
+
   if (!config_status.whatsapp_configured) warnings.push('WhatsApp not configured. Set N8N_WHATSAPP_WEBHOOK_URL in .env.local (n8n handles the WhatsApp connection).');
   if (!config_status.telegram_configured) warnings.push('Telegram not configured. Set TELEGRAM_BOT_TOKEN in .env.local.');
   if (!config_status.email_n8n_configured && !config_status.email_smtp_configured) warnings.push('Email not configured. Set N8N_EMAIL_WEBHOOK_URL (preferred) or SMTP_HOST/SMTP_USER in .env.local.');

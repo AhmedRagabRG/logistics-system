@@ -100,13 +100,6 @@ export const systemSettingsSchema = z.object({
   rfq_send_mode: z.enum(['auto', 'manual']).default('auto'),
 });
 
-export const exchangeRateSchema = z.object({
-  from_currency: z.string().length(3),
-  to_currency: z.string().length(3),
-  rate: z.number().positive(),
-  effective_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
-});
-
 export const rfqCreateSchema = z.object({
   quote_id: z.number().int().positive(),
   rfq_reference: z.string().min(1).max(64),

@@ -104,7 +104,6 @@ export default async function DashboardHomePage() {
                     { label: t('system_health_pricing', locale), value: systemStatus.table_counts.route_pricing, ok: systemStatus.table_counts.route_pricing > 0 },
                     { label: t('system_health_postal', locale), value: systemStatus.table_counts.postal_codes, ok: systemStatus.table_counts.postal_codes > 0 },
                     { label: t('system_health_countries', locale), value: `${systemStatus.table_counts.active_countries} / ${systemStatus.table_counts.countries}`, ok: systemStatus.table_counts.active_countries > 0 },
-                    { label: t('system_health_rates', locale), value: systemStatus.table_counts.exchange_rates, ok: systemStatus.table_counts.exchange_rates > 0 },
                   ].map((item) => (
                     <div key={item.label} className="bg-[var(--surface)] px-3 py-2">
                       <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">{item.label}</div>

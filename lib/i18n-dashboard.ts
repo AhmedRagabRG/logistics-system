@@ -19,7 +19,6 @@ export type TranslationKey =
   | 'nav_pricing'
   | 'nav_settings'
   | 'nav_admins'
-  | 'nav_exchange_rates'
   | 'nav_import'
   | 'nav_countries'
   | 'nav_operations'
@@ -143,7 +142,6 @@ export type TranslationKey =
   | 'vendor_delete'
   | 'pricing_title'
   | 'settings_title'
-  | 'exchange_rates_title'
   // General
   | 'error_loading'
   | 'loading'
@@ -314,7 +312,6 @@ export type TranslationKey =
   | 'system_health_pricing'
   | 'system_health_postal'
   | 'system_health_countries'
-  | 'system_health_rates'
   | 'system_health_config'
   | 'system_health_warnings'
   | 'system_health_ok'
@@ -347,7 +344,6 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     nav_pricing: 'Rota Fiyatları',
     nav_settings: 'Sistem Ayarları',
     nav_admins: 'Yöneticiler',
-    nav_exchange_rates: 'Döviz Kurları',
     nav_import: 'Veri İçe Aktar',
     nav_operations: 'Operasyonlar',
     logout: 'Çıkış Yap',
@@ -464,7 +460,6 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     vendor_delete: 'Sil',
     pricing_title: 'Rota Fiyatları',
     settings_title: 'Sistem Ayarları',
-    exchange_rates_title: 'Döviz Kurları',
     error_loading: 'Yükleme hatası',
     loading: 'Yükleniyor...',
     save: 'Kaydet',
@@ -623,7 +618,6 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     system_health_pricing: 'Rota Fiyatları',
     system_health_postal: 'Posta Kodları',
     system_health_countries: 'Ülkeler',
-    system_health_rates: 'Döviz Kurları',
     system_health_config: 'Yapılandırma',
     system_health_warnings: 'Uyarılar',
     system_health_ok: 'Tamam',
@@ -653,7 +647,6 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     nav_pricing: 'Route Pricing',
     nav_settings: 'System Settings',
     nav_admins: 'Admins',
-    nav_exchange_rates: 'Exchange Rates',
     nav_import: 'Import Data',
     nav_operations: 'Operations',
     logout: 'Logout',
@@ -770,7 +763,6 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     vendor_delete: 'Delete',
     pricing_title: 'Route Pricing',
     settings_title: 'System Settings',
-    exchange_rates_title: 'Exchange Rates',
     error_loading: 'Loading error',
     loading: 'Loading...',
     save: 'Save',
@@ -929,7 +921,6 @@ const translations: Record<DashboardLocale, Record<TranslationKey, string>> = {
     system_health_pricing: 'Route Pricing',
     system_health_postal: 'Postal Codes',
     system_health_countries: 'Countries',
-    system_health_rates: 'Exchange Rates',
     system_health_config: 'Configuration',
     system_health_warnings: 'Warnings',
     system_health_ok: 'OK',
