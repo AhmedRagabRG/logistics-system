@@ -305,6 +305,12 @@ CREATE TABLE IF NOT EXISTS system_settings (
     default_currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
     exchange_rate_reference_date DATE,
     oversize_weight_threshold_tons DECIMAL(5,2) NOT NULL DEFAULT 22.00,
+    waiting_period VARCHAR(16) NOT NULL DEFAULT '30m',
+    global_markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    vendor_msg_email TEXT,
+    vendor_msg_telegram TEXT,
+    vendor_msg_whatsapp TEXT,
+    is_paused BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

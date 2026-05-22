@@ -57,8 +57,8 @@ INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VA
 
 # Initialize system settings
 mysql -u root -p logistics_dashboard -e "
-INSERT INTO system_settings (master_logic_toggle, default_currency) VALUES
-('manual_approval', 'TRY');
+INSERT INTO system_settings (master_logic_toggle, default_currency, waiting_period, global_markup_percent, is_paused) VALUES
+('manual_approval', 'TRY', '30m', 0.00, FALSE);
 "
 ```
 

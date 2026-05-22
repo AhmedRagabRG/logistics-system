@@ -202,11 +202,12 @@ CREATE TABLE IF NOT EXISTS system_settings (
     default_currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
     exchange_rate_reference_date DATE,
     oversize_weight_threshold_tons DECIMAL(5,2) NOT NULL DEFAULT 22.00,
-    waiting_period VARCHAR(10) NOT NULL DEFAULT '30m',
+    waiting_period VARCHAR(16) NOT NULL DEFAULT '30m',
     global_markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
     vendor_msg_email TEXT,
     vendor_msg_telegram TEXT,
     vendor_msg_whatsapp TEXT,
+    is_paused BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -364,14 +365,19 @@ INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VA
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- System settings (single row - master configuration)
-INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, global_markup_percent) VALUES
-('manual_approval', 'TRY', '2026-04-28', 22.00, 0.00)
+INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp, is_paused) VALUES
+('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, NULL, NULL, NULL, FALSE)
 ON DUPLICATE KEY UPDATE
     master_logic_toggle = VALUES(master_logic_toggle),
     default_currency = VALUES(default_currency),
     exchange_rate_reference_date = VALUES(exchange_rate_reference_date),
     oversize_weight_threshold_tons = VALUES(oversize_weight_threshold_tons),
-    global_markup_percent = VALUES(global_markup_percent);
+    waiting_period = VALUES(waiting_period),
+    global_markup_percent = VALUES(global_markup_percent),
+    vendor_msg_email = VALUES(vendor_msg_email),
+    vendor_msg_telegram = VALUES(vendor_msg_telegram),
+    vendor_msg_whatsapp = VALUES(vendor_msg_whatsapp),
+    is_paused = VALUES(is_paused);
 
 -- ============================================================
 -- 4. TEST DATA (Quotes + RFQs)
