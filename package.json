@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:push": "tsx scripts/db-push.ts database.sql",
+    "db:seed": "tsx scripts/db-push.ts seed.sql",
+    "db:schema": "tsx scripts/db-push.ts schema-logistics.sql"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -29,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
+    "tsx": "^4.22.3",
     "typescript": "^5"
   }
 }
