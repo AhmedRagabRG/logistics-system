@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS rfq_records (
     vendor_responses JSON,
     generated_quote_price DECIMAL(12,2),
     selected_vendor_id INT NULL,
-    status ENUM('open', 'responded', 'closed') NOT NULL DEFAULT 'open',
+    status ENUM('draft', 'open', 'responded', 'closed') NOT NULL DEFAULT 'draft',
+    messages_sent BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE,
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
     vendor_msg_telegram TEXT,
     vendor_msg_whatsapp TEXT,
     is_paused BOOLEAN NOT NULL DEFAULT FALSE,
+    rfq_send_mode ENUM('auto', 'manual') NOT NULL DEFAULT 'auto',
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

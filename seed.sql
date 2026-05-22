@@ -40,5 +40,5 @@ INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VA
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- System settings (single row)
-INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, is_paused) VALUES
-('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, FALSE);
+INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, is_paused, rfq_send_mode) VALUES
+('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, FALSE, 'auto');

@@ -97,6 +97,7 @@ export const systemSettingsSchema = z.object({
   vendor_msg_telegram: z.string().max(5000).optional().nullable(),
   vendor_msg_whatsapp: z.string().max(5000).optional().nullable(),
   is_paused: z.coerce.boolean().default(false),
+  rfq_send_mode: z.enum(['auto', 'manual']).default('auto'),
 });
 
 export const exchangeRateSchema = z.object({

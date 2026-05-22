@@ -14,6 +14,7 @@ interface Settings {
   vendor_msg_email: string | null;
   vendor_msg_telegram: string | null;
   is_paused: boolean;
+  rfq_send_mode: 'auto' | 'manual';
 }
 
 export default function SettingsPage() {

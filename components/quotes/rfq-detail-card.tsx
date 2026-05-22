@@ -2,6 +2,8 @@ import { type DashboardLocale, t } from '@/lib/i18n-dashboard';
 import pool from '@/lib/db';
 import type { RowDataPacket } from 'mysql2/promise';
 import RfqVendorSelector from './rfq-vendor-selector';
+import RfqDraftActions from './rfq-draft-actions';
+import RfqVendorRemoveButton from './rfq-vendor-remove-button';
 
 interface RfqDetailProps {
   rfqId: number;
@@ -95,12 +97,15 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
   const isExpired = secondsRemaining <= 0;
   const isClosed = rfq.status === 'closed';
   const isPending = quoteStatus === 'pending';
+  const isDraft = rfq.status === 'draft';
 
   const statusColor = isClosed
     ? 'text-[var(--success)]'
-    : isExpired
-      ? 'text-[var(--danger)]'
-      : 'text-[var(--warning)]';
+    : isDraft
+      ? 'text-[var(--accent)]'
+      : isExpired
+        ? 'text-[var(--danger)]'
+        : 'text-[var(--warning)]';
 
   return (
     <div className="panel">
@@ -109,9 +114,16 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
           <h2 className="text-sm font-bold uppercase tracking-tight text-[var(--foreground)]">
             {locale === 'tr' ? 'RFQ Detayları' : 'RFQ Details'}
           </h2>
-          <span className={`text-xs font-bold uppercase tracking-wider ${statusColor}`}>
-            {rfq.status}
-          </span>
+          <div className="flex items-center gap-2">
+            {isDraft && (
+              <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[var(--accent)] text-white rounded">
+                {locale === 'tr' ? 'Taslak' : 'Draft'}
+              </span>
+            )}
+            <span className={`text-xs font-bold uppercase tracking-wider ${statusColor}`}>
+              {rfq.status}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -144,6 +156,16 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
             </div>
           </div>
         </div>
+
+        {/* Draft actions */}
+        {isDraft && (
+          <RfqDraftActions
+            rfqId={rfqId}
+            rfqReference={rfq.rfq_reference}
+            targetCountry={rfq.target_country}
+            locale={locale}
+          />
+        )}
 
         {rfq.generated_quote_price && (
           <div className="border border-[var(--accent)] bg-[var(--accent)]/5 px-3 py-2">
@@ -194,28 +216,37 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
                         {v.contact_channel} · {v.contact_id}
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0 ml-3">
-                      {v.status === 'responded' && v.response_price ? (
-                        <>
-                          <div className={`font-mono text-sm font-bold ${isSelected ? 'text-[var(--success)]' : 'text-[var(--foreground)]'}`}>
-                            {(typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2 })} {v.response_currency ?? '—'}
-                          </div>
-                          {!v.response_currency && (
-                            <div className="text-[10px] font-semibold uppercase text-[var(--danger)]">
-                              {locale === 'tr' ? 'Para birimi eksik' : 'Currency missing'}
-                            </div>
-                          )}
-                          <div className="text-[10px] font-mono text-[var(--muted)]">
-                            {v.responded_at ? new Date(v.responded_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : ''}
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                          {locale === 'tr' ? 'Bekliyor' : 'Pending'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                     <div className="text-right flex-shrink-0 ml-3">
+                       {v.status === 'responded' && v.response_price ? (
+                         <>
+                           <div className={`font-mono text-sm font-bold ${isSelected ? 'text-[var(--success)]' : 'text-[var(--foreground)]'}`}>
+                             {(typeof v.response_price === 'string' ? parseFloat(v.response_price) : v.response_price).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2 })} {v.response_currency ?? '—'}
+                           </div>
+                           {!v.response_currency && (
+                             <div className="text-[10px] font-semibold uppercase text-[var(--danger)]">
+                               {locale === 'tr' ? 'Para birimi eksik' : 'Currency missing'}
+                             </div>
+                           )}
+                           <div className="text-[10px] font-mono text-[var(--muted)]">
+                             {v.responded_at ? new Date(v.responded_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : ''}
+                           </div>
+                         </>
+                       ) : (
+                         <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                           {locale === 'tr' ? 'Bekliyor' : 'Pending'}
+                         </span>
+                       )}
+                       {isDraft && (
+                         <div className="mt-1">
+                           <RfqVendorRemoveButton
+                             assignmentId={v.id}
+                             vendorName={v.vendor_name}
+                             locale={locale}
+                           />
+                         </div>
+                       )}
+                     </div>
+                   </div>
                 );
               })}
             </div>

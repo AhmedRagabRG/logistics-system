@@ -2,9 +2,11 @@ import pool from './db';
 import type { RowDataPacket } from 'mysql2/promise';
 
 type ToggleState = 'auto_send' | 'low_confidence_only' | 'manual_approval';
+type RfqSendMode = 'auto' | 'manual';
 
 let cachedToggle: ToggleState | null = null;
 let cachedPaused: boolean | null = null;
+let cachedRfqMode: RfqSendMode | null = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
@@ -50,8 +52,30 @@ export async function getSystemPausedState(): Promise<boolean> {
   return paused;
 }
 
+export async function getRfqSendMode(): Promise<RfqSendMode> {
+  const now = Date.now();
+
+  if (cachedRfqMode && now - cachedAt < CACHE_TTL_MS) {
+    return cachedRfqMode;
+  }
+
+  const [rows] = await pool.execute<
+    Array<RowDataPacket & { rfq_send_mode: RfqSendMode }>
+  >(
+    'SELECT rfq_send_mode FROM system_settings ORDER BY id DESC LIMIT 1'
+  );
+
+  const mode = rows && rows.length > 0 ? rows[0].rfq_send_mode : 'auto';
+
+  cachedRfqMode = mode;
+  cachedAt = now;
+
+  return mode;
+}
+
 export function invalidateToggleCache(): void {
   cachedToggle = null;
   cachedPaused = null;
+  cachedRfqMode = null;
   cachedAt = 0;
 }

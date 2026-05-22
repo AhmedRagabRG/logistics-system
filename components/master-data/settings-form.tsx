@@ -13,6 +13,7 @@ interface SettingsFormProps {
     vendor_msg_email?: string | null;
     vendor_msg_telegram?: string | null;
     is_paused?: boolean;
+    rfq_send_mode?: 'auto' | 'manual';
   };
   onSuccess?: () => void;
 }
@@ -43,6 +44,7 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
     vendor_msg_email: initialData?.vendor_msg_email ?? '',
     vendor_msg_telegram: initialData?.vendor_msg_telegram ?? '',
     is_paused: initialData?.is_paused ?? false,
+    rfq_send_mode: initialData?.rfq_send_mode ?? 'auto',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
       vendor_msg_email: form.vendor_msg_email.trim() || null,
       vendor_msg_telegram: form.vendor_msg_telegram.trim() || null,
       is_paused: form.is_paused,
+      rfq_send_mode: form.rfq_send_mode,
     };
 
     try {
@@ -115,6 +118,26 @@ export default function SettingsForm({ initialData, onSuccess }: SettingsFormPro
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.is_paused ? 'translate-x-6' : 'translate-x-1'}`}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className={`rounded border px-3 py-3 ${form.rfq_send_mode === 'manual' ? 'border-[var(--warning)] bg-[var(--warning)]/5' : 'border-[var(--success)] bg-[var(--success)]/5'}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">RFQ Send Mode</div>
+            <div className={`mt-0.5 text-xs font-bold ${form.rfq_send_mode === 'manual' ? 'text-[var(--warning)]' : 'text-[var(--success)]'}`}>
+              {form.rfq_send_mode === 'manual' ? 'MANUAL — Admin approval required before sending' : 'AUTO — Messages sent immediately when RFQ is created'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, rfq_send_mode: form.rfq_send_mode === 'auto' ? 'manual' : 'auto' })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.rfq_send_mode === 'manual' ? 'bg-[var(--warning)]' : 'bg-[var(--success)]'}`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.rfq_send_mode === 'manual' ? 'translate-x-6' : 'translate-x-1'}`}
             />
           </button>
         </div>

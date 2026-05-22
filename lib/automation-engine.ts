@@ -62,6 +62,7 @@ async function getSystemSettings(): Promise<{
   default_currency: string;
   oversize_threshold_tons: number;
   global_markup_percent: number;
+  rfq_send_mode: string;
 }> {
   const [rows] = await pool.execute<
     Array<RowDataPacket & {
@@ -70,8 +71,9 @@ async function getSystemSettings(): Promise<{
       default_currency: string;
       oversize_weight_threshold_tons: number;
       global_markup_percent: number;
+      rfq_send_mode: string;
     }>
-  >('SELECT master_logic_toggle, waiting_period, default_currency, oversize_weight_threshold_tons, global_markup_percent FROM system_settings ORDER BY id DESC LIMIT 1');
+  >('SELECT master_logic_toggle, waiting_period, default_currency, oversize_weight_threshold_tons, global_markup_percent, rfq_send_mode FROM system_settings ORDER BY id DESC LIMIT 1');
 
   if (!rows || rows.length === 0) {
     return {
@@ -80,6 +82,7 @@ async function getSystemSettings(): Promise<{
       default_currency: 'TRY',
       oversize_threshold_tons: 22,
       global_markup_percent: 0,
+      rfq_send_mode: 'auto',
     };
   }
 
@@ -89,6 +92,7 @@ async function getSystemSettings(): Promise<{
     default_currency: rows[0].default_currency,
     oversize_threshold_tons: rows[0].oversize_weight_threshold_tons,
     global_markup_percent: rows[0].global_markup_percent ?? 0,
+    rfq_send_mode: rows[0].rfq_send_mode ?? 'auto',
   };
 }
 
@@ -192,6 +196,7 @@ interface CreateQuoteForRouteParams {
     default_currency: string;
     oversize_threshold_tons: number;
     global_markup_percent: number;
+    rfq_send_mode: string;
   };
   toggle: string;
   customerName: string | null;
@@ -436,7 +441,7 @@ async function createQuoteForRoute({
         }
 
         if (activeVendors.length > 0) {
-          // VALIDATION: Race-condition check — ensure quote is still pending before sending to vendors
+          // VALIDATION: Race-condition check — ensure quote is still pending before creating RFQ
           const [statusRows] = await pool.execute<Array<RowDataPacket & { status: string }>>(
             'SELECT status FROM quotes WHERE id = ? LIMIT 1',
             [quoteId]
@@ -451,6 +456,9 @@ async function createQuoteForRoute({
               details: { reason: 'quote_status_changed', current_status: currentStatus },
             });
           } else {
+            const isAutoSend = settings.rfq_send_mode === 'auto';
+            const rfqStatus = isAutoSend ? 'open' : 'draft';
+
             // Generate RFQ reference
             const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -460,9 +468,9 @@ async function createQuoteForRoute({
 
             // Create RFQ record
             const [rfqResult] = await pool.execute<ResultSetHeader>(
-              `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status)
-               VALUES (?, ?, ?, ?, ?)`,
-              [quoteId, rfqReference, finalTargetCountry, JSON.stringify(vendorIds), 'open']
+              `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status, messages_sent)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [quoteId, rfqReference, finalTargetCountry, JSON.stringify(vendorIds), rfqStatus, isAutoSend ? 1 : 0]
             );
 
             rfqId = rfqResult.insertId;
@@ -473,7 +481,7 @@ async function createQuoteForRoute({
               [rfqId, quoteId]
             );
 
-            // Create vendor assignments and send messages via valid preferred channels only
+            // Create vendor assignments (regardless of mode)
             const skippedVendors: Array<{ vendor_id: number; name: string; reason: string }> = [];
 
             for (const vendor of activeVendors) {
@@ -517,71 +525,74 @@ async function createQuoteForRoute({
                   [rfqId, vendor.id, contactChannel, contactId, 'pending']
                 );
 
-                let sendResult: { success: boolean; messageId?: string | number; error?: string };
-                let sentMessage: string;
+                // Only send messages when in auto mode
+                if (isAutoSend) {
+                  let sendResult: { success: boolean; messageId?: string | number; error?: string };
+                  let sentMessage: string;
 
-                if (contactChannel === 'whatsapp') {
-                  // WhatsApp Business API requires an APPROVED TEMPLATE for business-initiated messages.
-                  // Free-form text will fail with error 131030 if the vendor hasn't messaged in 24h.
-                  // Template: logistics_rfq_request (must be created in Meta Business Manager)
-                  const templateParams = [
-                    vendor.name,                      // {{1}} Vendor name
-                    String(originRegionValue),        // {{2}} Origin
-                    String(destinationRegionValue),   // {{3}} Destination
-                    `${weightKg!.toLocaleString()} kg`, // {{4}} Weight
-                    cargoType ?? 'General Cargo',     // {{5}} Cargo type
-                    rfqReference!,                    // {{6}} RFQ reference
-                  ];
+                  if (contactChannel === 'whatsapp') {
+                    // WhatsApp Business API requires an APPROVED TEMPLATE for business-initiated messages.
+                    // Free-form text will fail with error 131030 if the vendor hasn't messaged in 24h.
+                    // Template: logistics_rfq_request (must be created in Meta Business Manager)
+                    const templateParams = [
+                      vendor.name,                      // {{1}} Vendor name
+                      String(originRegionValue),        // {{2}} Origin
+                      String(destinationRegionValue),   // {{3}} Destination
+                      `${weightKg!.toLocaleString()} kg`, // {{4}} Weight
+                      cargoType ?? 'General Cargo',     // {{5}} Cargo type
+                      rfqReference!,                    // {{6}} RFQ reference
+                    ];
 
-                  sendResult = await sendWhatsAppTemplate(
-                    contactId,
-                    'logistics_rfq_request',
-                    'en',
-                    templateParams
-                  );
-                  sentMessage = `[Template: logistics_rfq_request] ${templateParams.join(' | ')}`;
-                } else {
-                  // Email / Telegram: free-form text works fine
-                  const msg = await generateVendorMessage({
-                    rfq_reference: rfqReference,
-                    target_country: finalTargetCountry,
-                    origin_region: String(originRegionValue),
-                    destination_region: String(destinationRegionValue),
-                    weight_kg: weightKg!,
-                    cargo_type: cargoType,
-                    vendor_name: vendor.name,
-                    language,
-                    channel: contactChannel as 'email' | 'whatsapp' | 'telegram',
-                  });
-                  sentMessage = msg.message;
+                    sendResult = await sendWhatsAppTemplate(
+                      contactId,
+                      'logistics_rfq_request',
+                      'en',
+                      templateParams
+                    );
+                    sentMessage = `[Template: logistics_rfq_request] ${templateParams.join(' | ')}`;
+                  } else {
+                    // Email / Telegram: free-form text works fine
+                    const msg = await generateVendorMessage({
+                      rfq_reference: rfqReference,
+                      target_country: finalTargetCountry,
+                      origin_region: String(originRegionValue),
+                      destination_region: String(destinationRegionValue),
+                      weight_kg: weightKg!,
+                      cargo_type: cargoType,
+                      vendor_name: vendor.name,
+                      language,
+                      channel: contactChannel as 'email' | 'whatsapp' | 'telegram',
+                    });
+                    sentMessage = msg.message;
 
-                  sendResult = await sendMessage({
-                    channel: contactChannel as 'whatsapp' | 'telegram' | 'email',
-                    contactId,
-                    message: msg.message,
-                    subject: msg.subject,
+                    sendResult = await sendMessage({
+                      channel: contactChannel as 'whatsapp' | 'telegram' | 'email',
+                      contactId,
+                      message: msg.message,
+                      subject: msg.subject,
+                    });
+                  }
+
+                  await logVendorEvent({
+                    event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
+                    quote_id: quoteId,
+                    rfq_id: rfqId,
+                    vendor_id: vendor.id,
+                    details: {
+                      rfq_reference: rfqReference,
+                      channel: contactChannel,
+                      contact_id: contactId,
+                      message: sentMessage,
+                      sent: sendResult.success,
+                      error: sendResult.error ?? null,
+                    },
                   });
                 }
-
-                await logVendorEvent({
-                  event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
-                  quote_id: quoteId,
-                  rfq_id: rfqId,
-                  vendor_id: vendor.id,
-                  details: {
-                    rfq_reference: rfqReference,
-                    channel: contactChannel,
-                    contact_id: contactId,
-                    message: sentMessage,
-                    sent: sendResult.success,
-                    error: sendResult.error ?? null,
-                  },
-                });
               }
             }
 
             if (skippedVendors.length > 0) {
-              console.log(`[RFQ-AUTO] Skipped ${skippedVendors.length} vendors due to missing contact info:`, skippedVendors);
+              console.log(`[RFQ] Skipped ${skippedVendors.length} vendors due to missing contact info:`, skippedVendors);
               await logPricingEvent({
                 event_type: 'rfq_vendors_skipped',
                 quote_id: quoteId,
@@ -590,11 +601,23 @@ async function createQuoteForRoute({
               });
             }
 
+            // Update review reason for manual mode
+            if (!isAutoSend) {
+              reviewReason = `RFQ ${rfqReference} created in DRAFT mode. ${activeVendors.length} vendors selected for ${finalTargetCountry}. Waiting for admin approval to send.`;
+              await pool.execute(`UPDATE quotes SET review_reason = ? WHERE id = ?`, [reviewReason, quoteId]);
+            }
+
             await logPricingEvent({
               event_type: 'rfq_initiated',
               quote_id: quoteId,
               rfq_id: rfqId,
-              details: { target_country: finalTargetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference },
+              details: {
+                target_country: finalTargetCountry,
+                vendor_count: activeVendors.length,
+                rfq_reference: rfqReference,
+                mode: isAutoSend ? 'auto' : 'draft',
+                messages_sent: isAutoSend,
+              },
             });
           }
         } else if (activeVendors.length === 0) {

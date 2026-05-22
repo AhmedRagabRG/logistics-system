@@ -167,7 +167,8 @@ CREATE TABLE IF NOT EXISTS rfq_records (
     vendor_responses JSON,
     generated_quote_price DECIMAL(12,2),
     selected_vendor_id INT NULL,
-    status ENUM('open', 'responded', 'closed') NOT NULL DEFAULT 'open',
+    status ENUM('draft', 'open', 'responded', 'closed') NOT NULL DEFAULT 'draft',
+    messages_sent BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE,
@@ -208,6 +209,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
     vendor_msg_telegram TEXT,
     vendor_msg_whatsapp TEXT,
     is_paused BOOLEAN NOT NULL DEFAULT FALSE,
+    rfq_send_mode ENUM('auto', 'manual') NOT NULL DEFAULT 'auto',
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -365,8 +367,8 @@ INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VA
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- System settings (single row - master configuration)
-INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp, is_paused) VALUES
-('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, NULL, NULL, NULL, FALSE)
+INSERT INTO system_settings (master_logic_toggle, default_currency, exchange_rate_reference_date, oversize_weight_threshold_tons, waiting_period, global_markup_percent, vendor_msg_email, vendor_msg_telegram, vendor_msg_whatsapp, is_paused, rfq_send_mode) VALUES
+('manual_approval', 'TRY', '2026-04-28', 22.00, '30m', 0.00, NULL, NULL, NULL, FALSE, 'auto')
 ON DUPLICATE KEY UPDATE
     master_logic_toggle = VALUES(master_logic_toggle),
     default_currency = VALUES(default_currency),
@@ -377,7 +379,8 @@ ON DUPLICATE KEY UPDATE
     vendor_msg_email = VALUES(vendor_msg_email),
     vendor_msg_telegram = VALUES(vendor_msg_telegram),
     vendor_msg_whatsapp = VALUES(vendor_msg_whatsapp),
-    is_paused = VALUES(is_paused);
+    is_paused = VALUES(is_paused),
+    rfq_send_mode = VALUES(rfq_send_mode);
 
 -- ============================================================
 -- 4. TEST DATA (Quotes + RFQs)

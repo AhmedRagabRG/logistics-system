@@ -97,6 +97,14 @@ export async function POST(
       );
     }
 
+    // Check RFQ send mode
+    const [settingsRows] = await pool.execute<
+      Array<RowDataPacket & { rfq_send_mode: string }>
+    >('SELECT rfq_send_mode FROM system_settings ORDER BY id DESC LIMIT 1');
+    const rfqSendMode = settingsRows?.[0]?.rfq_send_mode ?? 'auto';
+    const isAutoSend = rfqSendMode === 'auto';
+    const rfqStatus = isAutoSend ? 'open' : 'draft';
+
     // Generate RFQ reference
     const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -106,34 +114,25 @@ export async function POST(
 
     // Create RFQ record
     const [rfqResult] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status)
-       VALUES (?, ?, ?, ?, ?)`,
-      [quoteId, rfqReference, targetCountry, JSON.stringify(vendorIds), 'open']
+      `INSERT INTO rfq_records (quote_id, rfq_reference, target_country, selected_vendors, status, messages_sent)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [quoteId, rfqReference, targetCountry, JSON.stringify(vendorIds), rfqStatus, isAutoSend ? 1 : 0]
     );
 
     const rfqId = rfqResult.insertId;
 
     // Link quote to RFQ and set to pending
+    const reviewReason = isAutoSend
+      ? `RFQ created manually by admin for ${targetCountry}. Waiting for vendor responses.`
+      : `RFQ ${rfqReference} created in DRAFT mode by admin. ${activeVendors.length} vendors selected for ${targetCountry}. Waiting for admin approval to send.`;
     await pool.execute<ResultSetHeader>(
       `UPDATE quotes SET rfq_id = ?, status = 'pending', review_reason = ? WHERE id = ?`,
-      [rfqId, `RFQ created manually by admin for ${targetCountry}. Waiting for vendor responses.`, quoteId]
+      [rfqId, reviewReason, quoteId]
     );
 
-    // Get shipment request details for vendor messages
-    const [shipmentRows] = await pool.execute<
-      Array<RowDataPacket & { language: string; customer_name: string | null }>
-    >(
-      `SELECT s.language, s.customer_name
-       FROM quotes q
-       JOIN shipment_requests s ON s.id = q.shipment_request_id
-       WHERE q.id = ?`,
-      [quoteId]
-    );
-    const shipment = shipmentRows?.[0];
-    const language = (shipment?.language as 'ar' | 'tr' | 'en') ?? 'en';
-
-    // Create vendor assignments and send messages via valid preferred channels only
+    // Prepare vendor assignments (always created, but messages sent only in auto mode)
     const skippedVendors: Array<{ vendor_id: number; name: string; reason: string }> = [];
+    let messagesSent = 0;
 
     for (const vendor of activeVendors) {
       const channels = Array.isArray(vendor.preferred_channels)
@@ -174,6 +173,75 @@ export async function POST(
            VALUES (?, ?, ?, ?, ?)`,
           [rfqId, vendor.id, contactChannel, contactId, 'pending']
         );
+      }
+    }
+
+    if (!isAutoSend) {
+      await logPricingEvent({
+        event_type: 'rfq_initiated',
+        quote_id: quoteId,
+        rfq_id: rfqId,
+        admin_id: auth.admin.id,
+        details: { target_country: targetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference, source: 'manual_from_quote', mode: 'draft', waiting_approval: true },
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          rfq_id: rfqId,
+          rfq_reference: rfqReference,
+          quote_id: quoteId,
+          target_country: targetCountry,
+          vendor_count: activeVendors.length,
+          status: 'draft',
+          mode: 'manual',
+          message: 'RFQ created in draft mode. Use "Send to Vendors" to dispatch messages.',
+        },
+      });
+    }
+
+    // AUTO MODE: Send messages now
+    const [shipmentRows] = await pool.execute<
+      Array<RowDataPacket & { language: string; customer_name: string | null }>
+    >(
+      `SELECT s.language, s.customer_name
+       FROM quotes q
+       JOIN shipment_requests s ON s.id = q.shipment_request_id
+       WHERE q.id = ?`,
+      [quoteId]
+    );
+    const shipment = shipmentRows?.[0];
+    const language = (shipment?.language as 'ar' | 'tr' | 'en') ?? 'en';
+
+    for (const vendor of activeVendors) {
+      const channels = Array.isArray(vendor.preferred_channels)
+        ? vendor.preferred_channels
+        : typeof vendor.preferred_channels === 'string'
+          ? JSON.parse(vendor.preferred_channels)
+          : ['email'];
+
+      const validChannels = channels.filter((ch: string) => {
+        if (ch === 'whatsapp') return !!(vendor.contact_phone && vendor.contact_phone.trim().length > 0);
+        if (ch === 'telegram') return !!(vendor.telegram_chat_id && vendor.telegram_chat_id.trim().length > 0);
+        if (ch === 'email') return !!(vendor.contact_email && vendor.contact_email.includes('@'));
+        return false;
+      });
+
+      if (validChannels.length === 0) continue;
+
+      for (const contactChannel of validChannels) {
+        let contactId: string;
+        if (contactChannel === 'whatsapp') {
+          contactId = vendor.contact_phone ?? '';
+        } else if (contactChannel === 'telegram') {
+          contactId = vendor.telegram_chat_id ?? '';
+        } else {
+          contactId = vendor.contact_email ?? '';
+        }
+
+        if (contactChannel === 'whatsapp') {
+          contactId = normalizeContactId(contactId, 'whatsapp');
+        }
 
         let sendResult: { success: boolean; messageId?: string | number; error?: string };
         let sentMessage: string;
@@ -217,6 +285,8 @@ export async function POST(
           });
         }
 
+        messagesSent += sendResult.success ? 1 : 0;
+
         await logVendorEvent({
           event_type: sendResult.success ? 'vendor_rfq_sent' : 'vendor_rfq_send_failed',
           quote_id: quoteId,
@@ -250,7 +320,7 @@ export async function POST(
       quote_id: quoteId,
       rfq_id: rfqId,
       admin_id: auth.admin.id,
-      details: { target_country: targetCountry, vendor_count: activeVendors.length, rfq_reference: rfqReference, source: 'manual_from_quote' },
+      details: { target_country: targetCountry, vendor_count: activeVendors.length, messages_sent: messagesSent, rfq_reference: rfqReference, source: 'manual_from_quote', mode: 'auto' },
     });
 
     return NextResponse.json({
@@ -261,7 +331,9 @@ export async function POST(
         quote_id: quoteId,
         target_country: targetCountry,
         vendor_count: activeVendors.length,
+        messages_sent: messagesSent,
         status: 'open',
+        mode: 'auto',
       },
     });
   } catch (error) {

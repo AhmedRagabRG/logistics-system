@@ -25,7 +25,7 @@ export async function logAuthEvent(event: AuditEvent): Promise<void> {
 }
 
 export interface PricingEvent {
-  event_type: 'quote_created' | 'quote_approved' | 'quote_rejected' | 'quote_ready' | 'rfq_initiated' | 'quote_updated' | 'rfq_quote_generated' | 'customer_response_sent' | 'customer_response_failed' | 'customer_approval_sent' | 'customer_approval_failed' | 'customer_rejection_sent' | 'customer_rejection_failed' | 'customer_rfq_ready_sent' | 'customer_rfq_ready_failed' | 'rfq_skipped' | 'rfq_vendors_skipped';
+  event_type: 'quote_created' | 'quote_approved' | 'quote_rejected' | 'quote_ready' | 'rfq_initiated' | 'quote_updated' | 'rfq_quote_generated' | 'customer_response_sent' | 'customer_response_failed' | 'customer_approval_sent' | 'customer_approval_failed' | 'customer_rejection_sent' | 'customer_rejection_failed' | 'customer_rfq_ready_sent' | 'customer_rfq_ready_failed' | 'rfq_skipped' | 'rfq_vendors_skipped' | 'rfq_country_changed' | 'rfq_vendor_removed';
   quote_id: number;
   rfq_id?: number | null;
   admin_id?: number | null;
