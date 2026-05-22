@@ -23,9 +23,13 @@ export default function CreateRfqForm({ quoteId, locale, destinationRegion }: Cr
   // Auto-detect country from destination region when form opens (vendors serve the destination)
   const detectCountry = (region: string | null | undefined): string => {
     if (!region) return '';
-    const r = region.toLowerCase();
+    const r = region.normalize('NFC').toLocaleLowerCase('tr');
     for (const c of countries) {
-      const names = [c.name_en.toLowerCase(), c.name_tr.toLowerCase(), c.code.toLowerCase()];
+      const names = [
+        c.name_en.normalize('NFC').toLocaleLowerCase('tr'),
+        c.name_tr.normalize('NFC').toLocaleLowerCase('tr'),
+        c.code.toLowerCase(),
+      ];
       if (names.some((n) => r.includes(n))) return c.code;
     }
     return '';

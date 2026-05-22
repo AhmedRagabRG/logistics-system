@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDashboardT } from '@/lib/i18n-client';
 import { useCountries } from '@/hooks/use-countries';
 import { useDashboardLocaleContext } from '@/lib/i18n-client';
@@ -25,25 +25,32 @@ interface VendorFormProps {
   onSuccess?: () => void;
 }
 
+function normalizeForCompare(str: string): string {
+  return str.normalize('NFC').toLocaleLowerCase('tr');
+}
+
+function findCountryByCoverage(
+  countries: Array<{ name_en: string; name_tr: string; code: string }>,
+  coverage: string | null
+) {
+  if (!coverage) return null;
+  const normalizedCoverage = normalizeForCompare(coverage);
+  return countries.find(
+    (c) =>
+      normalizeForCompare(c.name_en) === normalizedCoverage ||
+      normalizeForCompare(c.name_tr) === normalizedCoverage ||
+      c.code.toLowerCase() === normalizedCoverage
+  );
+}
+
 export default function VendorForm({ initialData, onSuccess }: VendorFormProps) {
   const _t = useDashboardT();
   const locale = useDashboardLocaleContext();
   const { countries, loading: countriesLoading } = useCountries(locale);
 
-  // Normalize stored country_coverage to a value that matches one of the <option> values.
-  const matchedCountry = countries.find(
-    (c) =>
-      c.name_en.toLowerCase() === (initialData?.country_coverage ?? '').toLowerCase() ||
-      c.name_tr.toLowerCase() === (initialData?.country_coverage ?? '').toLowerCase() ||
-      c.code.toLowerCase() === (initialData?.country_coverage ?? '').toLowerCase()
-  );
-  const normalizedCountryCoverage = matchedCountry
-    ? (locale === 'tr' ? matchedCountry.name_tr : matchedCountry.name_en)
-    : (initialData?.country_coverage ?? '');
-
   const [form, setForm] = useState({
     name: initialData?.name ?? '',
-    country_coverage: normalizedCountryCoverage,
+    country_coverage: initialData?.country_coverage ?? '',
     city: initialData?.city ?? '',
     authorized_person_name: initialData?.authorized_person_name ?? '',
     expertise_notes: initialData?.expertise_notes ?? '',
@@ -63,6 +70,26 @@ export default function VendorForm({ initialData, onSuccess }: VendorFormProps) 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countryNormalized, setCountryNormalized] = useState(false);
+
+  // Re-normalize country_coverage once when countries finish loading and initialData is present.
+  // This fixes the race condition where useState was initialized before countries were available.
+  useEffect(() => {
+    if (!countryNormalized && !countriesLoading && countries.length > 0 && initialData?.country_coverage) {
+      const coverage = initialData.country_coverage;
+      const normalizedCoverage = normalizeForCompare(coverage);
+      const matched = countries.find(
+        (c) =>
+          normalizeForCompare(c.name_en) === normalizedCoverage ||
+          normalizeForCompare(c.name_tr) === normalizedCoverage ||
+          c.code.toLowerCase() === normalizedCoverage
+      );
+      const normalized = matched ? (locale === 'tr' ? matched.name_tr : matched.name_en) : coverage;
+      setForm((prev) => ({ ...prev, country_coverage: normalized }));
+      setCountryNormalized(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countriesLoading, countries.length, initialData?.country_coverage, locale, countryNormalized]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -68,11 +68,12 @@ export default function VendorsPage() {
 
   const getCountryLabel = useCallback(
     (raw: string) => {
+      const normalizedRaw = raw.normalize('NFC').toLocaleLowerCase('tr');
       const matched = countries.find(
         (c) =>
-          c.name_en.toLowerCase() === raw.toLowerCase() ||
-          c.name_tr.toLowerCase() === raw.toLowerCase() ||
-          c.code.toLowerCase() === raw.toLowerCase()
+          c.name_en.normalize('NFC').toLocaleLowerCase('tr') === normalizedRaw ||
+          c.name_tr.normalize('NFC').toLocaleLowerCase('tr') === normalizedRaw ||
+          c.code.toLowerCase() === normalizedRaw
       );
       return matched ? (locale === 'tr' ? matched.name_tr : matched.name_en) : raw;
     },

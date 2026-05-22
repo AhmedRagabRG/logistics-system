@@ -81,13 +81,15 @@ export async function POST(request: NextRequest) {
         );
         const dbCountries = countryRows as Array<{ code: string; name_en: string; name_tr: string }>;
 
-        const findCountry = (val: string) =>
-          dbCountries.find(
+        const findCountry = (val: string) => {
+          const normalized = val.normalize('NFC').toLocaleLowerCase('tr');
+          return dbCountries.find(
             (c) =>
-              c.name_en.toLowerCase() === val.toLowerCase() ||
-              c.name_tr.toLowerCase() === val.toLowerCase() ||
-              c.code.toLowerCase() === val.toLowerCase()
+              c.name_en.normalize('NFC').toLocaleLowerCase('tr') === normalized ||
+              c.name_tr.normalize('NFC').toLocaleLowerCase('tr') === normalized ||
+              c.code.toLowerCase() === normalized
           );
+        };
 
         const rows = parseVendors(buffer);
         // Debug: log first 3 rows to help diagnose import issues
