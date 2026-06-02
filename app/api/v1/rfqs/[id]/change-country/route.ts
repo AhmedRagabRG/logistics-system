@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import pool from '@/lib/db';
 import { requireAdminSession } from '@/lib/admin-auth';
 import { logPricingEvent } from '@/lib/audit';
@@ -85,59 +86,72 @@ export async function PUT(
       );
     }
 
-    // Delete old assignments
-    await pool.execute<ResultSetHeader>(
-      `DELETE FROM rfq_vendor_assignments WHERE rfq_id = ?`,
-      [rfqId]
-    );
+    // Execute all mutations inside a transaction for atomicity
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    // Create new assignments
-    const vendorIds = newVendors.map(v => v.id);
-    for (const vendor of newVendors) {
-      const channels = Array.isArray(vendor.preferred_channels)
-        ? vendor.preferred_channels
-        : typeof vendor.preferred_channels === 'string'
-          ? JSON.parse(vendor.preferred_channels)
-          : ['email'];
+      // Delete old assignments
+      await connection.execute<ResultSetHeader>(
+        `DELETE FROM rfq_vendor_assignments WHERE rfq_id = ?`,
+        [rfqId]
+      );
 
-      const validChannels = channels.filter((ch: string) => {
-        if (ch === 'whatsapp') return !!(vendor.contact_phone && vendor.contact_phone.trim().length > 0);
-        if (ch === 'telegram') return !!(vendor.telegram_chat_id && vendor.telegram_chat_id.trim().length > 0);
-        if (ch === 'email') return !!(vendor.contact_email && vendor.contact_email.includes('@'));
-        return false;
-      });
+      // Create new assignments
+      const vendorIds = newVendors.map(v => v.id);
+      for (const vendor of newVendors) {
+        const channels = Array.isArray(vendor.preferred_channels)
+          ? vendor.preferred_channels
+          : typeof vendor.preferred_channels === 'string'
+            ? JSON.parse(vendor.preferred_channels)
+            : ['email'];
 
-      if (validChannels.length === 0) continue;
+        const validChannels = channels.filter((ch: string) => {
+          if (ch === 'whatsapp') return !!(vendor.contact_phone && vendor.contact_phone.trim().length > 0);
+          if (ch === 'telegram') return !!(vendor.telegram_chat_id && vendor.telegram_chat_id.trim().length > 0);
+          if (ch === 'email') return !!(vendor.contact_email && vendor.contact_email.includes('@'));
+          return false;
+        });
 
-      for (const contactChannel of validChannels) {
-        let contactId: string;
-        if (contactChannel === 'whatsapp') {
-          contactId = vendor.contact_phone ?? '';
-        } else if (contactChannel === 'telegram') {
-          contactId = vendor.telegram_chat_id ?? '';
-        } else {
-          contactId = vendor.contact_email ?? '';
+        if (validChannels.length === 0) continue;
+
+        for (const contactChannel of validChannels) {
+          let contactId: string;
+          if (contactChannel === 'whatsapp') {
+            contactId = vendor.contact_phone ?? '';
+          } else if (contactChannel === 'telegram') {
+            contactId = vendor.telegram_chat_id ?? '';
+          } else {
+            contactId = vendor.contact_email ?? '';
+          }
+
+          await connection.execute<ResultSetHeader>(
+            `INSERT INTO rfq_vendor_assignments (rfq_id, vendor_id, contact_channel, contact_id, status)
+             VALUES (?, ?, ?, ?, ?)`,
+            [rfqId, vendor.id, contactChannel, contactId, 'pending']
+          );
         }
-
-        await pool.execute<ResultSetHeader>(
-          `INSERT INTO rfq_vendor_assignments (rfq_id, vendor_id, contact_channel, contact_id, status)
-           VALUES (?, ?, ?, ?, ?)`,
-          [rfqId, vendor.id, contactChannel, contactId, 'pending']
-        );
       }
+
+      // Update RFQ
+      await connection.execute<ResultSetHeader>(
+        `UPDATE rfq_records SET target_country = ?, selected_vendors = ? WHERE id = ?`,
+        [targetCountry, JSON.stringify(vendorIds), rfqId]
+      );
+
+      // Update quote review_reason
+      await connection.execute<ResultSetHeader>(
+        `UPDATE quotes SET review_reason = ? WHERE id = ?`,
+        [`RFQ ${rfq.rfq_reference} target country changed from ${oldCountry} to ${targetCountry}. ${newVendors.length} vendors selected.`, rfq.quote_id]
+      );
+
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
     }
-
-    // Update RFQ
-    await pool.execute<ResultSetHeader>(
-      `UPDATE rfq_records SET target_country = ?, selected_vendors = ? WHERE id = ?`,
-      [targetCountry, JSON.stringify(vendorIds), rfqId]
-    );
-
-    // Update quote review_reason
-    await pool.execute<ResultSetHeader>(
-      `UPDATE quotes SET review_reason = ? WHERE id = ?`,
-      [`RFQ ${rfq.rfq_reference} target country changed from ${oldCountry} to ${targetCountry}. ${newVendors.length} vendors selected.`, rfq.quote_id]
-    );
 
     await logPricingEvent({
       event_type: 'rfq_country_changed',
@@ -151,6 +165,9 @@ export async function PUT(
         rfq_reference: rfq.rfq_reference,
       },
     });
+
+    // Invalidate the quote detail page cache so the UI reflects the new vendors immediately
+    revalidatePath(`/quotes/${rfq.quote_id}`);
 
     return NextResponse.json({
       success: true,

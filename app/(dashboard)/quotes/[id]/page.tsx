@@ -35,6 +35,7 @@ interface QuoteDetail {
   rfq_id: number | null;
   rfq_reference: string | null;
   rfq_status: string | null;
+  rfq_target_country: string | null;
   review_reason: string | null;
   response_text: string | null;
   approved_by: number | null;
@@ -58,7 +59,7 @@ async function fetchQuote(id: number): Promise<QuoteDetail | null> {
              q.status, q.transport_mode, q.toggle_state_at_creation, q.is_oversize, q.rfq_id, q.review_reason,
              q.response_text, q.approved_by, q.approved_at, q.created_at,
              a.display_name as approver_name,
-             r.rfq_reference, r.status as rfq_status,
+             r.rfq_reference, r.status as rfq_status, r.target_country as rfq_target_country,
              s.language, s.channel, s.customer_name, s.customer_contact, s.raw_message
       FROM quotes q
       JOIN shipment_requests s ON s.id = q.shipment_request_id
@@ -130,7 +131,14 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {quote.rfq_id && (
-        <RfqDetailCard rfqId={quote.rfq_id} rfqReference={quote.rfq_reference} locale={locale} quoteStatus={quote.status} />
+        <RfqDetailCard
+          key={`rfq-${quote.rfq_id}-${quote.rfq_target_country ?? 'none'}`}
+          rfqId={quote.rfq_id}
+          rfqReference={quote.rfq_reference}
+          locale={locale}
+          quoteStatus={quote.status}
+          targetCountry={quote.rfq_target_country}
+        />
       )}
 
       {!quote.rfq_id && quote.status !== 'approved' && quote.status !== 'rejected' && (

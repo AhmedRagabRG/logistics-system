@@ -10,6 +10,7 @@ interface RfqDetailProps {
   rfqReference: string | null;
   locale: DashboardLocale;
   quoteStatus?: string;
+  targetCountry?: string | null;
 }
 
 function getWaitingPeriodSeconds(period: string): number {
@@ -33,7 +34,7 @@ function formatDuration(seconds: number, locale: DashboardLocale): string {
   return locale === 'tr' ? `${mins}dk` : `${mins}m`;
 }
 
-export default async function RfqDetailCard({ rfqId, rfqReference, locale, quoteStatus }: RfqDetailProps) {
+export default async function RfqDetailCard({ rfqId, rfqReference, locale, quoteStatus, targetCountry }: RfqDetailProps) {
   // Get RFQ record
   const [rfqRows] = await pool.execute<
     Array<RowDataPacket & {
@@ -162,7 +163,7 @@ export default async function RfqDetailCard({ rfqId, rfqReference, locale, quote
           <RfqDraftActions
             rfqId={rfqId}
             rfqReference={rfq.rfq_reference}
-            targetCountry={rfq.target_country}
+            targetCountry={targetCountry ?? rfq.target_country}
             locale={locale}
           />
         )}

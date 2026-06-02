@@ -1075,8 +1075,65 @@ export async function processVendorReply(
     }
   }
 
-  // Step 4: If still no assignment, store as unmatched
+  // Step 4: If still no assignment, the vendor might be sending a NEW quote request
+  // instead of replying to an RFQ. Try to parse it as a shipment request before
+  // falling back to unmatched.
   if (!assignment) {
+    console.log(`[VENDOR-REPLY] No open RFQ found. Attempting to parse as new shipment request...`);
+
+    // Look up vendor details for the quote customer fields
+    const [vendorRows] = await pool.execute<
+      Array<RowDataPacket & { id: number; name: string }>
+    >(
+      inferredChannel === 'email'
+        ? 'SELECT id, name FROM vendors WHERE contact_email = ? AND is_active = 1 LIMIT 1'
+        : inferredChannel === 'telegram'
+          ? 'SELECT id, name FROM vendors WHERE telegram_chat_id = ? AND is_active = 1 LIMIT 1'
+          : 'SELECT id, name FROM vendors WHERE (contact_phone LIKE ? OR REPLACE(REPLACE(REPLACE(contact_phone, " ", ""), "-", ""), "+", "") = ?) AND is_active = 1 LIMIT 1',
+      inferredChannel === 'email'
+        ? [contactId.toLowerCase()]
+        : inferredChannel === 'telegram'
+          ? [contactId]
+          : [contactId, contactId.replace(/\D/g, '')]
+    );
+
+    const vendorName = vendorRows?.[0]?.name ?? contactId;
+
+    let parsedShipments: ParsedShipmentRequest[] = [];
+    try {
+      parsedShipments = await parseShipmentMessages(replyText);
+    } catch (e) {
+      console.log(`[VENDOR-REPLY] Shipment parse failed:`, e);
+    }
+
+    // Heuristic: if we got at least one route with origin and destination info,
+    // treat this as a new quote request rather than an unmatched vendor reply.
+    const firstRoute = parsedShipments[0];
+    const hasShipmentDetails =
+      firstRoute &&
+      (firstRoute.confidence_score >= 0.4 ||
+        (firstRoute.origin_city || firstRoute.origin_country || firstRoute.origin_postal_code) &&
+        (firstRoute.destination_city || firstRoute.destination_country || firstRoute.destination_postal_code));
+
+    if (hasShipmentDetails) {
+      console.log(`[VENDOR-REPLY] Detected new quote request from vendor ${vendorName}. Creating quote...`);
+      const quoteResults = await processIncomingRequest({
+        raw_message: replyText,
+        customer_name: vendorName,
+        customer_contact: contactId,
+        channel: inferredChannel,
+        handling_mode: 'auto',
+      });
+
+      const resultMessages = quoteResults.map((r) => `Quote #${r.quote_id} (${r.status})`).join(', ');
+      return {
+        success: true,
+        message: `Treated as new quote request from vendor ${vendorName}. Created: ${resultMessages}`,
+        matched: false,
+      };
+    }
+
+    // Fallback: genuinely unmatched vendor reply
     await storeUnmatchedReply(contactId, inferredChannel, replyText, parsedReply.price, parsedReply.currency, 'No open RFQ found for this contact');
     return { success: false, message: 'No open RFQ found for this contact. Stored for manual review.', matched: false };
   }

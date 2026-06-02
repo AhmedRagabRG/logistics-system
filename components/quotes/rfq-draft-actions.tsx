@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { type DashboardLocale, t } from '@/lib/i18n-dashboard';
 
@@ -18,6 +18,10 @@ export default function RfqDraftActions({ rfqId, rfqReference, targetCountry, lo
   const [success, setSuccess] = useState<string | null>(null);
   const [showCountryForm, setShowCountryForm] = useState(false);
   const [newCountry, setNewCountry] = useState(targetCountry);
+
+  useEffect(() => {
+    setNewCountry(targetCountry);
+  }, [targetCountry]);
 
   async function handleSendMessages() {
     setLoading('send');
